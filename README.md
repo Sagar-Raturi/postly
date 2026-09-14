@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Postly — marketing homepage
 
-## Getting Started
-
-First, run the development server:
+A single, scrollable homepage for Postly, a blog-publishing SaaS. Built with
+Next.js (App Router) + TypeScript, Tailwind CSS v4, shadcn/ui and Framer Motion.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev     # http://localhost:3000
+npm run build
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Design system
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The palette is warm paper, ink black and a single deep-forest accent, defined
+once as CSS custom properties in `src/app/globals.css` and exposed to Tailwind
+through `@theme inline`. Light is the primary mode; dark is a full companion
+theme, toggled with next-themes and persisted to `localStorage`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Token | Role |
+| --- | --- |
+| `--background` / `--foreground` | warm off-white paper, warm near-black ink |
+| `--brand`, `--brand-soft`, `--brand-muted` | deep forest accent and its tints |
+| `--font-display` | Newsreader — every headline and all editorial prose |
+| `--font-sans` | Inter — UI, body copy, labels |
+| `--font-mono` | JetBrains Mono — subdomains, URLs, counters |
 
-## Learn More
+Three custom shadow utilities (`shadow-soft`, `shadow-lift`, `shadow-window`)
+re-declare Tailwind's ring layers before their own values, because setting
+`box-shadow` outright would silently erase any `ring-*` on the same element.
 
-To learn more about Next.js, take a look at the following resources:
+## Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  app/
+    layout.tsx            fonts, metadata, theme provider, no-JS reveal fallback
+    page.tsx              composes the nine sections in order
+    globals.css           palette, type scale, custom utilities
+  components/
+    site/                 navbar, hero, how-it-works, features, social-proof,
+                          examples, pricing, cta-banner, footer, primitives
+    mockups/              browser-frame.tsx + screens.tsx
+    motion/reveal.tsx     Reveal / Stagger / StaggerItem
+  lib/content.ts          all copy and data for the page
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`src/lib/content.ts` holds every string that repeats or lists — features,
+testimonials, plans, example blogs, footer columns — so copy edits do not mean
+touching layout.
 
-## Deploy on Vercel
+## Product "screenshots"
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+There is no real product yet, so every screenshot is styled markup rather than
+an image: `BrowserFrame` supplies the chrome and address bar, and `screens.tsx`
+draws the editor, the onboarding step, the focus-mode editor with its slash
+menu, the published blog, and the small gallery previews. They stay sharp at any
+size and follow the active theme, which a PNG would not.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Motion
+
+Sections fade and rise as they enter the viewport (`Reveal`), and grids release
+their children in sequence (`Stagger`). Every wrapper reads
+`useReducedMotion()` and renders a plain `div` when the visitor prefers reduced
+motion.
+
+Two deliberate exceptions:
+
+- The hero animates from CSS (`.animate-rise`), not JavaScript, so the first
+  screen paints immediately instead of waiting for hydration.
+- Reveal wrappers carry `data-reveal`, and a `<noscript>` rule in the layout
+  forces them visible, so the page is never blank without JavaScript.
+
+## Notes
+
+- Pricing tiers are **Free / Pro / Publication**. The brief suggested naming the
+  third tier "Custom Domain"; a custom domain reads better as a headline feature
+  of Pro than as a tier name, so it appears there instead.
+- Publication names in the logo strip and the testimonial authors are invented
+  placeholders, not real outlets or people.
+- All links are `#` anchors — this is the homepage only.

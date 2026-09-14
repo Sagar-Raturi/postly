@@ -1,26 +1,224 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono-code);
+  --font-display: var(--font-newsreader);
+  --font-heading: var(--font-inter);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-muted: var(--brand-muted);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ---------------------------------------------------------------
+   Palette: warm paper, ink black, deep forest accent.
+   Light is primary; dark is a true, warm-neutral dark mode.
+---------------------------------------------------------------- */
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.9895 0.004 95);
+  --foreground: oklch(0.215 0.015 62);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.215 0.015 62);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.215 0.015 62);
+
+  --primary: oklch(0.215 0.015 62);
+  --primary-foreground: oklch(0.99 0.004 95);
+
+  --secondary: oklch(0.962 0.007 95);
+  --secondary-foreground: oklch(0.245 0.015 62);
+
+  --muted: oklch(0.962 0.007 95);
+  --muted-foreground: oklch(0.502 0.014 70);
+
+  --accent: oklch(0.955 0.009 95);
+  --accent-foreground: oklch(0.245 0.015 62);
+
+  --destructive: oklch(0.551 0.181 27.3);
+
+  --border: oklch(0.901 0.008 90);
+  --input: oklch(0.901 0.008 90);
+  --ring: oklch(0.435 0.082 157);
+
+  --brand: oklch(0.435 0.082 157);
+  --brand-foreground: oklch(0.985 0.01 150);
+  --brand-soft: oklch(0.946 0.028 155);
+  --brand-muted: oklch(0.62 0.075 157);
+}
+
+.dark {
+  --background: oklch(0.185 0.012 68);
+  --foreground: oklch(0.945 0.008 95);
+
+  --card: oklch(0.227 0.013 68);
+  --card-foreground: oklch(0.945 0.008 95);
+  --popover: oklch(0.227 0.013 68);
+  --popover-foreground: oklch(0.945 0.008 95);
+
+  --primary: oklch(0.945 0.008 95);
+  --primary-foreground: oklch(0.205 0.013 68);
+
+  --secondary: oklch(0.268 0.013 68);
+  --secondary-foreground: oklch(0.945 0.008 95);
+
+  --muted: oklch(0.268 0.013 68);
+  --muted-foreground: oklch(0.706 0.011 82);
+
+  --accent: oklch(0.285 0.014 68);
+  --accent-foreground: oklch(0.955 0.008 95);
+
+  --destructive: oklch(0.704 0.191 22.2);
+
+  --border: oklch(1 0 0 / 11%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.72 0.105 157);
+
+  --brand: oklch(0.755 0.112 157);
+  --brand-foreground: oklch(0.19 0.035 157);
+  --brand-soft: oklch(0.312 0.041 157);
+  --brand-muted: oklch(0.6 0.075 157);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--brand-soft);
+    color: var(--foreground);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* Editorial display type: serif, tight, optically balanced. */
+  .font-display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Faint paper grain — keeps large flat areas from feeling plasticky. */
+  .bg-paper-dots {
+    background-image: radial-gradient(
+      currentColor 0.5px,
+      transparent 0.5px
+    );
+    background-size: 18px 18px;
+  }
+
+  /* Tailwind composes ring/inset utilities into `box-shadow`, so these
+     re-declare those layers first — setting box-shadow outright would
+     silently erase any ring on the same element. */
+  .shadow-soft {
+    box-shadow:
+      var(--tw-inset-shadow, 0 0 #0000),
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000),
+      0 1px 2px oklch(0.2 0.01 60 / 0.04),
+      0 8px 24px -8px oklch(0.2 0.01 60 / 0.08);
+  }
+  .shadow-lift {
+    box-shadow:
+      var(--tw-inset-shadow, 0 0 #0000),
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000),
+      0 1px 2px oklch(0.2 0.01 60 / 0.05),
+      0 18px 40px -16px oklch(0.2 0.01 60 / 0.16);
+  }
+  .shadow-window {
+    box-shadow:
+      var(--tw-inset-shadow, 0 0 #0000),
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000),
+      0 2px 4px oklch(0.2 0.01 60 / 0.04),
+      0 24px 60px -20px oklch(0.2 0.01 60 / 0.22);
+  }
+  .dark .shadow-window {
+    box-shadow:
+      var(--tw-inset-shadow, 0 0 #0000),
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000),
+      0 24px 60px -20px oklch(0 0 0 / 0.6);
+  }
+}
+
+@layer utilities {
+  /* Above-the-fold entrance. Runs from CSS rather than JS so the first
+     screen paints immediately instead of waiting on hydration. */
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(22px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .animate-rise {
+    animation: rise-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-rise {
+      animation: none;
+    }
+  }
 }
