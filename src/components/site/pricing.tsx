@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -138,7 +139,13 @@ export function Pricing() {
                     variant={plan.recommended ? "default" : "outline"}
                     className="mt-6 h-11 w-full rounded-full text-[0.9rem] transition-transform hover:-translate-y-px"
                     nativeButton={false}
-                    render={<a href="#" />}
+                    render={
+                      plan.ctaHref.startsWith("/") ? (
+                        <Link href={plan.ctaHref} />
+                      ) : (
+                        <a href={plan.ctaHref} />
+                      )
+                    }
                   >
                     {plan.cta}
                   </Button>

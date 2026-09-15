@@ -5,9 +5,8 @@ from django.urls import include, path
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/auth/", include("accounts.urls")),
     path("api/", include("blog.urls")),
-    # DRF's login/logout for the browsable API while there is no real auth.
-    path("api-auth/", include("rest_framework.urls")),
 ]
 
 # Post images are served by Django in development only; a real deployment

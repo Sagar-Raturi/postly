@@ -64,19 +64,18 @@ export function Navbar() {
 
           <div className="flex items-center gap-1.5">
             <ThemeToggle />
-            {/* TEMPORARY: replace with real auth in Phase 2 */}
             <Button
               variant="ghost"
               className="hidden h-9 rounded-full px-3.5 text-[0.875rem] text-muted-foreground hover:text-foreground sm:inline-flex"
               nativeButton={false}
-              render={<Link href="/dashboard" />}
+              render={<Link href="/login" />}
             >
-              Go to dashboard
+              Log in
             </Button>
             <Button
               className="h-9 rounded-full px-4 text-[0.875rem] shadow-sm transition-transform hover:-translate-y-px"
               nativeButton={false}
-              render={<a href="#pricing" />}
+              render={<Link href="/signup" />}
             >
               Start Writing
             </Button>
@@ -117,14 +116,13 @@ export function Navbar() {
                   </a>
                 ))}
               </nav>
-              {/* TEMPORARY: replace with real auth in Phase 2 */}
               <Button
                 variant="outline"
                 className="mt-4 h-10 w-full rounded-full sm:hidden"
                 nativeButton={false}
-                render={<Link href="/dashboard" />}
+                render={<Link href="/login" />}
               >
-                Go to dashboard
+                Log in
               </Button>
             </Container>
           </motion.div>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRight, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container, Rise } from "@/components/site/primitives";
@@ -74,7 +75,7 @@ export function Hero() {
               <Button
                 className="h-12 w-full rounded-full px-7 text-[0.95rem] shadow-lift transition-transform hover:-translate-y-0.5 sm:w-auto"
                 nativeButton={false}
-                render={<a href="#pricing" />}
+                render={<Link href="/signup" />}
               >
                 Start your blog — free
                 <ArrowRight aria-hidden data-icon="inline-end" />

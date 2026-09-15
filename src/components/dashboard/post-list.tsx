@@ -92,7 +92,10 @@ export function PostList() {
       setSite(currentSite);
 
       if (!currentSite) {
+        // Signed in, but never finished onboarding — there is nothing to
+        // show until they have a blog.
         setPosts([]);
+        router.replace("/onboarding");
         return;
       }
       const { results } = await getPosts({ site: currentSite.id });
@@ -106,7 +109,7 @@ export function PostList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   React.useEffect(() => {
     void (async () => {
@@ -347,17 +350,17 @@ function EmptyState({
   );
 }
 
+/**
+ * Briefly visible while load() redirects an account that has no blog yet
+ * to /onboarding.
+ */
 function NoSiteState() {
   return (
     <div className="rounded-xl bg-card px-6 py-16 text-center ring-1 ring-foreground/10">
-      <h2 className="font-display text-xl">No blog found</h2>
+      <h2 className="font-display text-xl">Setting things up</h2>
       <p className="mx-auto mt-2 max-w-md text-[0.9rem] text-pretty text-muted-foreground">
-        Phase 1 has no sign-up flow, so the demo blog is created by a management
-        command. Run this in <span className="font-mono">postly-backend</span>:
+        Taking you to name your blog…
       </p>
-      <pre className="mx-auto mt-4 w-fit rounded-lg bg-muted px-4 py-2.5 font-mono text-[0.78rem]">
-        python manage.py seed_demo_site
-      </pre>
     </div>
   );
 }

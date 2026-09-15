@@ -1,8 +1,9 @@
 """
 Local development settings.
 
-WARNING: Phase 1 ships no authentication — the API is completely open. These
-settings are for a local machine only. Do not expose this server to a network.
+Insecure key, permissive hosts, and mail printed to the terminal instead of
+sent. Fine on a laptop, not fine anywhere else — prod.py is the deployable
+one.
 """
 
 from .base import *  # noqa: F403
@@ -23,5 +24,17 @@ CORS_ALLOWED_ORIGINS = env(
     "CORS_ALLOWED_ORIGINS",
     default=["http://localhost:3000", "http://127.0.0.1:3000"],
 )
+CSRF_TRUSTED_ORIGINS = env(
+    "CSRF_TRUSTED_ORIGINS",
+    default=["http://localhost:3000", "http://127.0.0.1:3000"],
+)
 
+# Local dev is plain http, so demanding a secure cookie would mean the
+# browser silently refuses to store the session and nothing ever logs in.
+# prod.py sets both of these to True.
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
+# Verification and password-reset links print to the runserver terminal.
+# No email provider needed to work on auth locally — see the README.
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

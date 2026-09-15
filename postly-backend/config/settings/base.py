@@ -16,6 +16,9 @@ env = environ.Env(
     DJANGO_DEBUG=(bool, False),
     DJANGO_ALLOWED_HOSTS=(list, []),
     CORS_ALLOWED_ORIGINS=(list, []),
+    CSRF_TRUSTED_ORIGINS=(list, []),
+    EMAIL_PORT=(int, 587),
+    EMAIL_USE_TLS=(bool, True),
 )
 
 # Read .env when present. Real deployments set variables in the environment
@@ -42,9 +45,21 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "django_filters",
+    "allauth",
+    "allauth.account",
+    "dj_rest_auth",
+    # Registration also switches on dj-rest-auth's login-time check that the
+    # address has been verified, which is what makes ACCOUNT_EMAIL_VERIFICATION
+    # below actually block a login.
+    "dj_rest_auth.registration",
+    # Deliberately no django.contrib.sites: allauth 65 does not need it, and
+    # its Site model would sit next to blog.Site under the same name.
     # Local
+    "accounts",
     "blog",
 ]
+
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     # CorsMiddleware has to sit above CommonMiddleware so CORS headers are
@@ -57,7 +72,14 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # TODO Phase 2: add the subdomain-resolving middleware that maps
+    # Required by allauth 65: the app refuses to start without it.
+    "allauth.account.middleware.AccountMiddleware",
+    # Publishes a readable "somebody is logged in" cookie for the Next.js
+    # middleware. Must come after AuthenticationMiddleware, which is what
+    # puts request.user there. See the class docstring for why the session
+    # cookie cannot be used for this.
+    "accounts.middleware.AuthHintCookieMiddleware",
+    # TODO Phase 3: add the subdomain-resolving middleware that maps
     # <slug>.postly.com onto a Site and attaches it to the request.
 ]
 
@@ -92,9 +114,32 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        # Django's default is 8. Ten costs a writer nothing and removes a
+        # large slice of the guessable keyspace.
+        "OPTIONS": {"min_length": 10},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# Argon2 first, so new and rehashed passwords use it. The rest stay listed
+# so existing hashes remain verifiable and are upgraded on next login.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]
+
+# One hour. Long enough to find the mail, short enough that a reset link
+# left in an inbox is not a standing key to the account.
+PASSWORD_RESET_TIMEOUT = 60 * 60
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
 LANGUAGE_CODE = "en-us"
@@ -118,11 +163,97 @@ REST_FRAMEWORK = {
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.OrderingFilter",
     ],
-    # TODO Phase 2: flip to rest_framework.permissions.IsAuthenticated once
-    # django-allauth is wired up. Every ViewSet also states this explicitly.
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    # Closed by default: an endpoint that forgets to state a permission is
+    # private, not public. Views that must be reachable anonymously (login,
+    # signup, password reset) opt out individually.
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    # Session cookies only — see the cookie block below for why there is no
+    # token here. The subclass answers anonymous callers with 401 instead of
+    # DRF's default 403.
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "accounts.authentication.CsrfSessionAuthentication"
+    ],
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    # Anonymous requests are bucketed by IP, so these are per-IP limits.
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_login": "5/min",
+        "auth_password_reset": "5/min",
+        "auth_signup": "10/hour",
+        "auth_verify_email": "20/hour",
+        # The slug check fires on every keystroke (debounced), so this one
+        # is loose — it is only here to bound the enumeration rate.
+        "onboarding": "60/min",
+        # Everything dj-rest-auth registers that we did not subclass
+        # (logout, password change, user details).
+        "dj_rest_auth": "60/min",
+    },
 }
 
+# --- Sessions, cookies and CSRF ---------------------------------------------
+# The frontend authenticates with a session cookie, not a JWT in
+# localStorage. A token in localStorage is readable by any script on the
+# page, so one XSS bug is one stolen session; an httpOnly cookie cannot be
+# read by JavaScript at all. Both halves of Postly are first-party, so there
+# is no cross-origin requirement that would justify the trade.
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+# Must stay False: lib/api.ts reads this cookie to set X-CSRFToken on unsafe
+# requests. The CSRF token is not a credential — the session cookie is, and
+# that one is httpOnly.
+CSRF_COOKIE_HTTPONLY = False
+
+# Unset in dev, where both halves are on localhost. In production the API and
+# the app sit on sibling subdomains, and the cookie has to be scoped to the
+# parent (".postly.com") for the app to send it back.
+SESSION_COOKIE_DOMAIN = env("SESSION_COOKIE_DOMAIN", default=None)
+
 # Only the origins listed here may call the API from a browser. Deliberately
-# no CORS_ALLOW_ALL_ORIGINS anywhere, in any environment.
+# no CORS_ALLOW_ALL_ORIGINS anywhere, in any environment — it is incompatible
+# with credentialed requests, and it would hand any site a logged-in caller.
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
+
+# --- allauth / dj-rest-auth --------------------------------------------------
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+# The account exists from signup, but cannot be logged into until the address
+# is confirmed. dj-rest-auth's LoginSerializer enforces this.
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_UNIQUE_EMAIL = True
+# There is no username column on accounts.User; this stops allauth reaching
+# for one.
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_ADAPTER = "accounts.adapters.PostlyAccountAdapter"
+ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = env("ACCOUNT_DEFAULT_HTTP_PROTOCOL", default="http")
+
+REST_AUTH = {
+    # No auth tokens: the login response carries nothing but a session
+    # cookie. Leaving the default here would also require the authtoken app.
+    "TOKEN_MODEL": None,
+    "SESSION_LOGIN": True,
+    "USE_JWT": False,
+    "USER_DETAILS_SERIALIZER": "accounts.serializers.UserSerializer",
+    "REGISTER_SERIALIZER": "accounts.serializers.SignupSerializer",
+    # Django's PasswordResetForm signs links the confirm endpoint cannot
+    # verify once allauth is installed. See the serializer's docstring.
+    "PASSWORD_RESET_SERIALIZER": "accounts.serializers.PasswordResetSerializer",
+    "OLD_PASSWORD_FIELD_ENABLED": True,
+}
+
+# Where the Next.js app lives. Verification and reset links point here, not
+# at Django, which renders no pages for people.
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000").rstrip("/")
+
+# --- Email -------------------------------------------------------------------
+# dev.py swaps this for the console backend. Credentials come from the
+# environment in every real deployment.
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.resend.com")
+EMAIL_PORT = env("EMAIL_PORT")
+EMAIL_USE_TLS = env("EMAIL_USE_TLS")
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Postly <hello@postly.com>")

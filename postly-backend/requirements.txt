@@ -9,6 +9,17 @@ djangorestframework==3.18.1
 django-cors-headers==4.9.0
 django-filter==26.1
 
+# --- Authentication ---------------------------------------------------------
+# allauth owns signup, email verification and password reset; dj-rest-auth
+# exposes those flows as REST endpoints for the Next.js frontend.
+django-allauth==65.19.3
+dj-rest-auth==7.2.0
+# Argon2 password hashing, in place of Django's default PBKDF2.
+argon2-cffi==25.1.0
+# No django-ratelimit: every dj-rest-auth view already carries a
+# `throttle_scope`, so DRF's own ScopedRateThrottle covers brute-force
+# protection without a further dependency. See REST_FRAMEWORK in settings.
+
 # --- Configuration ----------------------------------------------------------
 django-environ==0.14.0
 

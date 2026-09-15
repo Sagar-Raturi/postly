@@ -3,9 +3,6 @@ Production settings.
 
 Nothing here has a usable default: every secret and origin must come from the
 environment, and the module raises ImproperlyConfigured on anything missing.
-
-NOTE: Phase 1 has no authentication. Do not deploy with these settings until
-Phase 2 auth lands, no matter how correct the rest of this file looks.
 """
 
 from .base import *  # noqa: F403
@@ -18,6 +15,9 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
+# Required, not optional: session auth means every unsafe request from the
+# Next.js origin is CSRF-checked against this list.
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
 
 # Assume TLS terminates at a proxy that sets X-Forwarded-Proto.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -29,7 +29,8 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", default=[])
+
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 X_FRAME_OPTIONS = "DENY"
 

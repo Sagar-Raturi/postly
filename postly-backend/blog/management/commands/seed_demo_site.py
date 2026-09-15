@@ -1,16 +1,23 @@
 """
-Creates the demo Site the Phase 1 dashboard writes into.
+Creates a ready-to-use demo account: a verified user, their blog, and a few
+posts.
 
-Phase 1 has no sign-up flow, so a blog has to exist before the dashboard is
-useful. Doing it here rather than lazily inside a view keeps the API free of
-hidden write side effects on GET.
+Signup now exists, so this is no longer required to make the dashboard
+usable — it is a shortcut. After a database reset it saves going through
+signup and fishing the confirmation link out of the console.
 """
 
+from allauth.account.models import EmailAddress
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from blog.models import Post, Site
 
+User = get_user_model()
+
+DEMO_EMAIL = "demo@postly.test"
+DEMO_PASSWORD = "small-hours-demo"
 DEMO_SLUG = "small-hours"
 
 DEMO_POSTS = [
@@ -47,26 +54,52 @@ DEMO_POSTS = [
 
 
 class Command(BaseCommand):
-    help = "Create the demo site and sample posts used by the Phase 1 dashboard."
+    help = "Create a verified demo account with a blog and sample posts."
 
     def add_arguments(self, parser):
+        parser.add_argument("--email", default=DEMO_EMAIL)
+        parser.add_argument("--password", default=DEMO_PASSWORD)
         parser.add_argument(
             "--reset",
             action="store_true",
-            help="Delete the demo site's existing posts before seeding.",
+            help="Delete the demo blog's existing posts before seeding.",
         )
 
     @transaction.atomic
     def handle(self, *args, **options):
-        site, created = Site.objects.get_or_create(
+        email = options["email"]
+        password = options["password"]
+
+        user, user_created = User.objects.get_or_create(
+            email=email,
+            defaults={"display_name": "Demo Writer"},
+        )
+        if user_created:
+            user.set_password(password)
+            user.save(update_fields=["password"])
+            self.stdout.write(self.style.SUCCESS(f"Created user {email}"))
+        else:
+            self.stdout.write(f"User {email} already exists")
+
+        # Marked verified directly. ACCOUNT_EMAIL_VERIFICATION is mandatory,
+        # so without this the demo account could be created but never used.
+        _, email_created = EmailAddress.objects.update_or_create(
+            user=user,
+            email=email,
+            defaults={"verified": True, "primary": True},
+        )
+        if email_created:
+            self.stdout.write("Marked the address verified")
+
+        site, site_created = Site.objects.get_or_create(
             slug=DEMO_SLUG,
             defaults={
+                "owner": user,
                 "name": "Small Hours",
                 "description": "Essays about attention, mostly.",
             },
         )
-
-        if created:
+        if site_created:
             self.stdout.write(self.style.SUCCESS(f"Created site “{site.name}”"))
         else:
             self.stdout.write(f"Site “{site.name}” already exists")
@@ -81,7 +114,11 @@ class Command(BaseCommand):
             _, post_created = Post.objects.get_or_create(
                 site=site,
                 title=entry["title"],
-                defaults={"content": entry["content"], "status": entry["status"]},
+                defaults={
+                    "content": entry["content"],
+                    "status": entry["status"],
+                    "author": user,
+                },
             )
             added += int(post_created)
 
@@ -91,3 +128,5 @@ class Command(BaseCommand):
                 f"{site.posts.count()} total on {site.domain}"
             )
         )
+        if user_created:
+            self.stdout.write(f"\nLog in at /login with {email} / {password}")

@@ -185,6 +185,8 @@ export type Plan = {
   tagline: string;
   features: string[];
   cta: string;
+  /** Where the plan's button goes. Sales plans point at contact, not signup. */
+  ctaHref: string;
   recommended?: boolean;
 };
 
@@ -202,6 +204,7 @@ export const PLANS: Plan[] = [
       "Basic analytics",
     ],
     cta: "Start writing — free",
+    ctaHref: "/signup",
   },
   {
     name: "Pro",
@@ -217,6 +220,7 @@ export const PLANS: Plan[] = [
       "No Postly badge",
     ],
     cta: "Start 14-day trial",
+    ctaHref: "/signup",
     recommended: true,
   },
   {
@@ -233,6 +237,7 @@ export const PLANS: Plan[] = [
       "Priority support from a human",
     ],
     cta: "Talk to us",
+    ctaHref: "mailto:hello@postly.com",
   },
 ];
 

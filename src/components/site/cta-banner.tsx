@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/site/primitives";
@@ -41,7 +42,7 @@ export function CtaBanner() {
             <Button
               className="h-12 w-full rounded-full bg-[oklch(0.97_0.005_95)] px-7 text-[0.95rem] text-[oklch(0.215_0.015_62)] shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-white sm:w-auto"
               nativeButton={false}
-              render={<a href="#pricing" />}
+              render={<Link href="/signup" />}
             >
               Start your blog — free
               <ArrowRight aria-hidden data-icon="inline-end" />

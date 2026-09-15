@@ -1,0 +1,50 @@
+{% comment %}
+Shared shell for Postly's transactional mail.
+
+Table layout and inline styles are not a stylistic choice — Gmail strips
+<style> blocks and most clients ignore flexbox. The palette mirrors
+src/app/globals.css: warm paper, ink, deep forest.
+{% endcomment %}<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:0;background:#f7f6f1;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f6f1;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background:#ffffff;border-radius:14px;border:1px solid #e6e3dc;">
+            <tr>
+              <td style="padding:32px 32px 0 32px;font-family:Georgia,'Times New Roman',serif;font-size:19px;color:#2b2721;">
+                Postly
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px 0 32px;font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.25;color:#2b2721;">
+                {{ heading }}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 32px 0 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#5b5548;">
+                {{ body }}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 0 32px;">
+                <a href="{{ action_url }}" style="display:inline-block;background:#2f5d43;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:500;padding:12px 22px;border-radius:999px;">{{ action_label }}</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 0 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#8a8377;">
+                Or paste this into your browser:<br />
+                <span style="font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:12px;color:#5b5548;word-break:break-all;">{{ action_url }}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 32px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#8a8377;border-top:1px solid #eeebe4;margin-top:8px;">
+                {{ footnote }}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

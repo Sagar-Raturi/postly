@@ -1,20 +1,32 @@
 /**
  * Typed client for the Postly Django API.
  *
- * Phase 1 note: the backend has no authentication, so nothing here sends
- * credentials. When Phase 2 lands, the token/session handling belongs in
- * `request()` below and nowhere else.
+ * Authentication is a session cookie, set by the backend and marked
+ * httpOnly — so there is no token here to read, store, or attach. Every
+ * request sends `credentials: "include"` and, for unsafe methods, copies
+ * the CSRF cookie into the `X-CSRFToken` header. All of that lives in
+ * `request()` and nowhere else.
  */
 
 const BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api"
 ).replace(/\/$/, "");
 
+/** Methods Django exempts from CSRF checks. */
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
+
 /* ------------------------------------------------------------------ *
  * Types — these mirror blog/serializers.py
  * ------------------------------------------------------------------ */
 
 export type PostStatus = "draft" | "published";
+
+export interface User {
+  id: number;
+  email: string;
+  display_name: string;
+  date_joined: string;
+}
 
 export interface Site {
   id: number;
@@ -44,6 +56,7 @@ export interface PostListItem {
 export interface Post extends PostListItem {
   content: string;
   site_name: string;
+  author_name: string | null;
 }
 
 export interface Paginated<T> {
@@ -102,16 +115,66 @@ export class ApiError extends Error {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Session handling
+ * ------------------------------------------------------------------ */
+
+/**
+ * Called whenever the API answers 401.
+ *
+ * AuthProvider registers itself here so there is exactly one place that
+ * decides what an expired session means — clear the user, go to /login —
+ * instead of every caller having to remember.
+ */
+type UnauthorizedHandler = () => void;
+let onUnauthorized: UnauthorizedHandler | null = null;
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
+  onUnauthorized = handler;
+}
+
+/**
+ * Requests that are allowed to 401 without meaning "your session died".
+ *
+ * The mount-time check of who is logged in 401s for every signed-out
+ * visitor, which is a normal answer, not an expiry — bouncing on it would
+ * redirect people away from the homepage.
+ */
+const TOLERATES_401 = new Set(["/auth/user/"]);
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+
+  const match = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${name}=([^;]*)`),
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(init.headers as Record<string, string> | undefined),
+  };
+
+  // Django checks this header against the CSRF cookie. The cookie is
+  // readable by design; the session cookie, which is the actual credential,
+  // is httpOnly and never passes through JavaScript.
+  if (!SAFE_METHODS.has(method)) {
+    const csrfToken = readCookie("csrftoken");
+    if (csrfToken) headers["X-CSRFToken"] = csrfToken;
+  }
+
   let response: Response;
 
   try {
     response = await fetch(`${BASE_URL}${path}`, {
       ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...init.headers,
-      },
+      headers,
+      // Without this the browser sends no cookies to the API's origin, and
+      // every request looks anonymous.
+      credentials: "include",
       // The dashboard always wants live data, never a cached page.
       cache: "no-store",
     });
@@ -123,6 +186,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       null,
       { cause },
     );
+  }
+
+  if (response.status === 401 && !TOLERATES_401.has(path)) {
+    onUnauthorized?.();
   }
 
   if (response.status === 204) return undefined as T;
@@ -161,6 +228,131 @@ function buildQuery(filters: object): string {
 }
 
 /* ------------------------------------------------------------------ *
+ * Auth
+ * ------------------------------------------------------------------ */
+
+export interface SignupInput {
+  email: string;
+  display_name: string;
+  password1: string;
+  password2: string;
+}
+
+/**
+ * Asks the backend to set a CSRF cookie.
+ *
+ * Logging in refreshes it anyway, so this only matters for the case where
+ * a visitor has a live session but no CSRF cookie — cleared site data, say.
+ * Without it every save would fail with a 403 and no way to recover.
+ */
+export async function ensureCsrf(): Promise<void> {
+  try {
+    await request<{ detail: string }>("/auth/csrf/");
+  } catch {
+    // Not worth surfacing: if the API is unreachable the next real call
+    // will say so far more usefully.
+  }
+}
+
+/** The signed-in account, or null when nobody is signed in. */
+export async function getCurrentUser(): Promise<User | null> {
+  try {
+    return await request<User>("/auth/user/");
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return null;
+    throw err;
+  }
+}
+
+/**
+ * Logs in and returns the account.
+ *
+ * The login response itself carries no body — just the session cookie —
+ * so who that session belongs to takes a second call.
+ */
+export async function login(email: string, password: string): Promise<User> {
+  await request<void>("/auth/login/", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+
+  const user = await getCurrentUser();
+  if (!user) throw new ApiError("Logged in, but the session did not stick.", 0, null);
+  return user;
+}
+
+export function logout(): Promise<{ detail: string }> {
+  return request<{ detail: string }>("/auth/logout/", { method: "POST" });
+}
+
+export function signup(data: SignupInput): Promise<{ detail: string }> {
+  return request<{ detail: string }>("/auth/signup/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function verifyEmail(key: string): Promise<{ detail: string; email: string }> {
+  return request<{ detail: string; email: string }>(
+    `/auth/verify-email/${encodeURIComponent(key)}/`,
+  );
+}
+
+export function resendVerification(email: string): Promise<{ detail: string }> {
+  return request<{ detail: string }>("/auth/resend-verification/", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function requestPasswordReset(email: string): Promise<{ detail: string }> {
+  return request<{ detail: string }>("/auth/password/reset/", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function confirmPasswordReset(data: {
+  uid: string;
+  token: string;
+  new_password1: string;
+  new_password2: string;
+}): Promise<{ detail: string }> {
+  return request<{ detail: string }>("/auth/password/reset/confirm/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Onboarding
+ * ------------------------------------------------------------------ */
+
+export interface SlugCheck {
+  slug: string;
+  available: boolean;
+  reason?: string;
+  domain?: string;
+}
+
+export function checkSlug(slug: string): Promise<SlugCheck> {
+  return request<SlugCheck>(
+    `/onboarding/slug-available/?slug=${encodeURIComponent(slug)}`,
+  );
+}
+
+export function createFirstSite(data: {
+  name: string;
+  slug: string;
+  description?: string;
+}): Promise<Site> {
+  return request<Site>("/onboarding/site/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/* ------------------------------------------------------------------ *
  * Sites
  * ------------------------------------------------------------------ */
 
@@ -193,9 +385,11 @@ export function deleteSite(id: number): Promise<void> {
 }
 
 /**
- * The Phase 1 dashboard writes into whichever site exists. Returns null when
- * the database has not been seeded yet, so the UI can say so instead of
- * failing silently.
+ * The signed-in writer's blog. The API only ever returns their own, so
+ * "the first one" means theirs.
+ *
+ * Null means they have not been through onboarding yet, which the dashboard
+ * treats as a redirect rather than an error.
  */
 export async function getCurrentSite(): Promise<Site | null> {
   const { results } = await getSites();

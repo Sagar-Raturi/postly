@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/site/logo";
 import { ThemeToggle } from "@/components/site/theme-toggle";
 import { Container } from "@/components/site/primitives";
+import { AccountMenu } from "@/components/dashboard/account-menu";
 
 /**
  * Dashboard chrome. Mirrors the marketing navbar's proportions so the two
@@ -52,6 +53,7 @@ export function DashboardHeader({
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
             {actions}
+            <AccountMenu />
           </div>
         </div>
       </Container>

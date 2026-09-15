@@ -1,0 +1,8 @@
+{% autoescape off %}Confirm this address to finish setting up your Postly account.
+
+{{ activate_url }}
+
+If you did not ask for this, ignore it and nothing changes.
+
+— Postly
+{% endautoescape %}

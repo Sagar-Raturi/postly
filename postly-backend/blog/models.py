@@ -1,5 +1,6 @@
 import re
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from django.utils.html import strip_tags
@@ -18,14 +19,16 @@ WHITESPACE_RE = re.compile(r"\s+")
 
 class Site(models.Model):
     """
-    One writer's blog. This is the tenant boundary for everything else.
-
-    TODO Phase 2: add
-        owner = models.ForeignKey(settings.AUTH_USER_MODEL,
-                                  related_name="sites", on_delete=models.CASCADE)
-    and filter every queryset by request.user.
+    One writer's blog. This is the tenant boundary for everything else:
+    every queryset in the API is filtered by `owner`.
     """
 
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="sites",
+        on_delete=models.CASCADE,
+        help_text="Deleting the account deletes the blog and its posts.",
+    )
     name = models.CharField(max_length=120, help_text="The blog's display title.")
     slug = models.SlugField(
         max_length=63,  # a DNS label may not exceed 63 characters
@@ -54,6 +57,15 @@ class Post(models.Model):
         PUBLISHED = "published", "Published"
 
     site = models.ForeignKey(Site, related_name="posts", on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="posts",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Nulled rather than cascaded, so closing an account does "
+        "not unpublish what it wrote.",
+    )
     title = models.CharField(max_length=255)
     slug = models.SlugField(
         max_length=255,
