@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The Django project. Its virtualenv vendors minified JS (jQuery,
+    // select2, xregexp) that ESLint would otherwise try to lint.
+    "postly-backend/**",
   ]),
 ]);
 

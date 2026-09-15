@@ -1,0 +1,139 @@
+import re
+
+from django.db import models
+from django.utils import timezone
+from django.utils.html import strip_tags
+from django.utils.text import Truncator, slugify
+
+EXCERPT_LENGTH = 200
+
+# Tags that imply a line break, so the text either side must not be glued
+# together when the markup is stripped for an excerpt.
+BLOCK_BOUNDARY_RE = re.compile(
+    r"<\s*/?\s*(p|div|br|li|ul|ol|h[1-6]|blockquote|pre|tr|td|th|section)\b[^>]*>",
+    re.IGNORECASE,
+)
+WHITESPACE_RE = re.compile(r"\s+")
+
+
+class Site(models.Model):
+    """
+    One writer's blog. This is the tenant boundary for everything else.
+
+    TODO Phase 2: add
+        owner = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                  related_name="sites", on_delete=models.CASCADE)
+    and filter every queryset by request.user.
+    """
+
+    name = models.CharField(max_length=120, help_text="The blog's display title.")
+    slug = models.SlugField(
+        max_length=63,  # a DNS label may not exceed 63 characters
+        unique=True,
+        help_text="Becomes the subdomain: <slug>.postly.com",
+    )
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def domain(self) -> str:
+        """The address this blog will be served from once routing exists."""
+        return f"{self.slug}.postly.com"
+
+
+class Post(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PUBLISHED = "published", "Published"
+
+    site = models.ForeignKey(Site, related_name="posts", on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    slug = models.SlugField(
+        max_length=255,
+        blank=True,
+        help_text="Generated from the title on first save, then left alone so "
+        "published URLs stay stable.",
+    )
+    content = models.TextField(blank=True, help_text="HTML produced by the editor.")
+    excerpt = models.CharField(max_length=300, blank=True)
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.DRAFT
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "slug"], name="unique_post_slug_per_site"
+            )
+        ]
+        indexes = [models.Index(fields=["site", "status"])]
+
+    def __str__(self) -> str:
+        return self.title or "(untitled)"
+
+    @property
+    def is_published(self) -> bool:
+        return self.status == self.Status.PUBLISHED
+
+    def _build_unique_slug(self) -> str:
+        """Slugify the title, then suffix -2, -3... until it is free on this site."""
+        base = slugify(self.title)[:200] or "untitled"
+        siblings = Post.objects.filter(site=self.site)
+        if self.pk:
+            siblings = siblings.exclude(pk=self.pk)
+
+        candidate, suffix = base, 2
+        while siblings.filter(slug=candidate).exists():
+            candidate = f"{base}-{suffix}"
+            suffix += 1
+        return candidate
+
+    def _build_excerpt(self) -> str:
+        """First couple of sentences of the body, with the editor's HTML removed."""
+        # Block boundaries have to become whitespace first, or the end of one
+        # paragraph runs into the start of the next: "...twice.What I got...".
+        # Inline tags are left to strip_tags so "<strong>word</strong>," does
+        # not gain a space before the comma.
+        text = BLOCK_BOUNDARY_RE.sub(" ", self.content or "")
+        text = strip_tags(text).replace("&nbsp;", " ")
+        text = WHITESPACE_RE.sub(" ", text).strip()
+        return Truncator(text).chars(EXCERPT_LENGTH, truncate="…")
+
+    def save(self, *args, **kwargs):
+        touched = []
+
+        if not self.slug:
+            self.slug = self._build_unique_slug()
+            touched.append("slug")
+
+        if not self.excerpt:
+            self.excerpt = self._build_excerpt()
+            touched.append("excerpt")
+
+        # published_at always describes the *current* publication, so it is set
+        # on the way up and cleared on the way back down to draft.
+        if self.is_published and self.published_at is None:
+            self.published_at = timezone.now()
+            touched.append("published_at")
+        elif not self.is_published and self.published_at is not None:
+            self.published_at = None
+            touched.append("published_at")
+
+        # A caller passing update_fields would otherwise silently drop the
+        # fields this method just derived.
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and touched:
+            kwargs["update_fields"] = set(update_fields) | set(touched)
+
+        super().save(*args, **kwargs)
