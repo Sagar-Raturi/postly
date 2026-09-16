@@ -54,11 +54,11 @@ export default async function BlogIndexPage({
   return (
     <ReadingColumn className="py-14 sm:py-20">
       <header>
-        <h1 className="font-display text-[2rem] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[2.6rem]">
+        <h1 className="font-blog-heading text-[2rem] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[2.6rem]">
           {site.name}
         </h1>
         {site.description ? (
-          <p className="mt-4 font-display text-[1.125rem] leading-[1.65] text-pretty text-muted-foreground sm:text-[1.1875rem]">
+          <p className="mt-4 text-[1.125rem] leading-[1.65] text-pretty text-muted-foreground sm:text-[1.1875rem]">
             {site.description}
           </p>
         ) : null}
@@ -67,7 +67,7 @@ export default async function BlogIndexPage({
       <hr className="my-12 border-border/70" />
 
       {posts.length === 0 ? (
-        <p className="font-display text-[1.0625rem] text-muted-foreground">
+        <p className="text-[1.0625rem] text-muted-foreground">
           Nothing published here yet.
         </p>
       ) : (
@@ -75,7 +75,7 @@ export default async function BlogIndexPage({
           {posts.map((post) => (
             <li key={post.slug}>
               <article>
-                <h2 className="font-display text-[1.4rem] leading-[1.3] tracking-[-0.015em] text-pretty sm:text-[1.55rem]">
+                <h2 className="font-blog-heading text-[1.4rem] leading-[1.3] tracking-[-0.015em] text-pretty sm:text-[1.55rem]">
                   <Link
                     href={`/${site.slug}/${post.slug}`}
                     className="rounded-sm transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -95,7 +95,7 @@ export default async function BlogIndexPage({
                 </p>
 
                 {post.excerpt ? (
-                  <p className="mt-3 font-display text-[1.0625rem] leading-[1.7] text-pretty text-muted-foreground">
+                  <p className="mt-3 text-[1.0625rem] leading-[1.7] text-pretty text-muted-foreground">
                     {post.excerpt}
                   </p>
                 ) : null}

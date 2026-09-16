@@ -19,14 +19,32 @@ from .sanitize import clean
 
 
 class PublicSiteSerializer(serializers.ModelSerializer):
-    """What a reader is told about the blog itself."""
+    """
+    What a reader is told about the blog itself.
+
+    The four appearance fields are here because the blog cannot render
+    without them, and they are safe to publish because none of them is a
+    colour: `theme`, `appearance` and `font_pairing` are enum members the
+    frontend maps onto values it owns, and `accent_hue` is an integer
+    0-360. A reader learns which palette a writer picked, which is not a
+    secret — it is the page they are looking at.
+    """
 
     # The writer's display name — never the account's email or id.
     author = serializers.CharField(source="owner.display_name", read_only=True)
 
     class Meta:
         model = Site
-        fields = ["name", "slug", "description", "author"]
+        fields = [
+            "name",
+            "slug",
+            "description",
+            "author",
+            "theme",
+            "appearance",
+            "font_pairing",
+            "accent_hue",
+        ]
         read_only_fields = fields
 
 

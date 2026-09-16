@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 /**
@@ -13,7 +12,13 @@ import "./globals.css";
  * on somebody's blog should not have their browser asking the Postly API
  * about a session they do not have.
  *
- * What is shared is genuinely shared: fonts, the palette, and the theme.
+ * The same goes for the theme. `next-themes` is the *product's* light/dark
+ * switch, and it lives in `(app)/layout.tsx` for the same reason: a blog's
+ * appearance is its writer's setting, published with the blog, and a reader
+ * who once put the Postly marketing site into dark mode should not thereby
+ * restyle somebody else's writing.
+ *
+ * What is shared is genuinely shared: the document, and the fonts.
  */
 
 const inter = Inter({
@@ -60,14 +65,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <noscript>
           <style>{"[data-reveal]{opacity:1!important;transform:none!important}"}</style>
         </noscript>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   );

@@ -220,7 +220,7 @@ dashboard shows a connection error, Django is not up.
 pytest
 ```
 
-162 tests. Model save logic (slug generation and collisions, excerpt
+177 tests. Model save logic (slug generation and collisions, excerpt
 derivation, read-time rounding, publish/unpublish timestamps), every API
 endpoint (CRUD, filtering, pagination, validation errors), the auth flows
 (signup, mandatory verification, login and logout, throttling, password reset
@@ -236,7 +236,10 @@ its failure modes are different from everything else's:
   site id, no `status`, no internal timestamps;
 - the public endpoints answer while logged out, and the dashboard endpoints
   still **401** while logged out;
-- post bodies come back sanitised.
+- post bodies come back sanitised;
+- a blog's appearance reaches the reader, cannot be written through the public
+  API, and rejects every value outside its closed set — including an
+  injection-shaped one, which is the case the closed set exists for.
 
 ## Using Postgres instead of SQLite
 
@@ -268,7 +271,7 @@ a couple of minutes.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `GET` | `/api/public/sites/{slug}/` | name, slug, description, author display name |
+| `GET` | `/api/public/sites/{slug}/` | name, slug, description, author display name, appearance |
 | `GET` | `/api/public/sites/{slug}/posts/` | published posts only, paginated, newest first |
 | `GET` | `/api/public/sites/{slug}/posts/{postSlug}/` | one published post, with its body |
 
@@ -285,6 +288,13 @@ What holds across all three:
 - **Nothing is client-filterable.** No `?status=`, no `?ordering=` — a reader
   choosing the ordering is not a feature, and `?status=draft` would be a way of
   asking for one.
+- **A blog's appearance is published, and it is not a colour.** `theme`,
+  `appearance` and `font_pairing` are enum members; `accent_hue` is an integer
+  0-360. The frontend (`src/lib/blog-theme.ts`) owns every actual value those
+  select. This is the whole reason a writer customising their blog cannot put
+  a string into a stylesheet — the same concern as the body sanitising below,
+  handled by never accepting the string in the first place rather than by
+  escaping it.
 - **Post bodies are sanitised on the way out** (`blog/sanitize.py`). A body is
   HTML a person wrote, and until Phase 3 gives each blog its own subdomain it is
   rendered to *other people* on the same origin as the dashboard — so a
@@ -348,6 +358,10 @@ Notes on behaviour worth knowing:
 - **`read_time_minutes` is computed server-side**, from the word count of the
   stripped body at 200wpm, rounded up, never zero. Both the dashboard and the
   published post read it from the API, so the two cannot disagree.
+- **`PATCH /api/sites/{id}/` is where a blog is restyled.** `accent_hue` is
+  bounded on the serializer as well as the model, because DRF does not run
+  model validators; the other three are `TextChoices`, so an unknown name is a
+  400 rather than a stored value nothing can render.
 - **`slug` and `published_at` are read-only.** Both are derived in
   `Post.save()`; sending them is ignored.
 - **Slugs are generated once**, from the title, on first save, and are then
@@ -398,6 +412,7 @@ postly-backend/
     ├── public_views.py        AllowAny, published posts only     │ API
     ├── public_urls.py         /api/public/                      ─┘
     ├── sanitize.py          allowlist HTML cleaning, on the way out
+    ├── migrations/0002_*    the four appearance columns on Site
     ├── onboarding.py        first blog, slug availability
     ├── subdomains.py        DNS rules and reserved names for slugs
     ├── filters.py           ?site= and ?status=

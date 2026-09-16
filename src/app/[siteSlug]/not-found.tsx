@@ -12,10 +12,10 @@ import { ReadingColumn } from "@/components/public/reading-column";
 export default function BlogNotFound() {
   return (
     <ReadingColumn className="flex flex-1 flex-col justify-center py-24 text-center">
-      <h1 className="font-display text-[1.75rem] tracking-[-0.02em] sm:text-[2rem]">
+      <h1 className="font-blog-heading text-[1.75rem] tracking-[-0.02em] sm:text-[2rem]">
         Nothing here
       </h1>
-      <p className="mx-auto mt-3 max-w-sm font-display text-[1.0625rem] leading-[1.7] text-pretty text-muted-foreground">
+      <p className="mx-auto mt-3 max-w-sm text-[1.0625rem] leading-[1.7] text-pretty text-muted-foreground">
         This page has either moved, or was never published.
       </p>
       <p className="mt-8 text-[0.85rem] text-muted-foreground">

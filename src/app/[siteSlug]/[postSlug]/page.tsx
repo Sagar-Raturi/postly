@@ -84,7 +84,7 @@ export default async function PostPage({
     <ReadingColumn className="py-14 sm:py-20">
       <article>
         <header>
-          <h1 className="font-display text-[2rem] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[2.5rem]">
+          <h1 className="font-blog-heading text-[2rem] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[2.5rem]">
             {post.title}
           </h1>
 
@@ -106,7 +106,7 @@ export default async function PostPage({
           origin with the dashboard — see postly-backend/blog/sanitize.py.
         */}
         <div
-          className="prose prose-postly mt-10 max-w-none font-display text-[1.1875rem] leading-[1.75]"
+          className="prose prose-postly mt-10 max-w-none font-blog-body text-[1.1875rem] leading-[1.75]"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
       </article>

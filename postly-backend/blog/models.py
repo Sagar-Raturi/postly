@@ -2,6 +2,7 @@ import re
 from math import ceil
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.html import strip_tags
@@ -29,6 +30,31 @@ class Site(models.Model):
     every queryset in the API is filtered by `owner`.
     """
 
+    class Theme(models.TextChoices):
+        """
+        A named palette. The values live in the frontend
+        (`src/lib/blog-theme.ts`), which is the only thing that can render
+        them; this column only has to say *which* one, so the database never
+        holds a colour and the API never accepts one.
+        """
+
+        PAPER = "paper", "Paper"
+        SLATE = "slate", "Slate"
+        SEPIA = "sepia", "Sepia"
+        MONO = "mono", "Mono"
+
+    class Appearance(models.TextChoices):
+        LIGHT = "light", "Light"
+        DARK = "dark", "Dark"
+        # Renders light, with a prefers-color-scheme override for dark. The
+        # writer is choosing to let the reader decide.
+        SYSTEM = "system", "Follow the reader"
+
+    class FontPairing(models.TextChoices):
+        EDITORIAL = "editorial", "Editorial — serif headings, serif body"
+        CLEAN = "clean", "Clean — serif headings, sans body"
+        PLAIN = "plain", "Plain — sans headings, sans body"
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="sites",
@@ -42,6 +68,40 @@ class Site(models.Model):
         help_text="Becomes the subdomain: <slug>.postly.com",
     )
     description = models.TextField(blank=True)
+
+    # --- Appearance ---------------------------------------------------------
+    # Four columns, all of them closed sets or a bounded number. No column
+    # here holds a colour, a font name, or any other string that ends up
+    # inside a stylesheet: the frontend maps these onto values it owns. That
+    # is what stops a blog's theme from being a CSS injection vector.
+    theme = models.CharField(
+        max_length=16,
+        choices=Theme.choices,
+        default=Theme.PAPER,
+        help_text="Which named palette the published blog is rendered in.",
+    )
+    appearance = models.CharField(
+        max_length=16,
+        choices=Appearance.choices,
+        default=Appearance.LIGHT,
+        help_text="Light, dark, or whichever the reader's system asks for.",
+    )
+    font_pairing = models.CharField(
+        max_length=16,
+        choices=FontPairing.choices,
+        default=FontPairing.EDITORIAL,
+        help_text="Which of the loaded font families the blog sets type in.",
+    )
+    accent_hue = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(360)],
+        help_text="An OKLCH hue, 0-360, for links and accents. Null keeps the "
+        "theme's own accent. Only the hue is the writer's to choose — "
+        "lightness and chroma come from the theme, which is what keeps "
+        "contrast legible at every setting.",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

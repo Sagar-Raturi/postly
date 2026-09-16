@@ -15,7 +15,7 @@ Two properties are load-bearing and get their own tests:
 import pytest
 from django.urls import reverse
 
-from blog.models import Post
+from blog.models import Post, Site
 
 pytestmark = pytest.mark.django_db
 
@@ -119,7 +119,18 @@ class TestNothingPrivateLeaks:
     def test_site_payload(self, api, site, user_a):
         body = api.get(site_url(site.slug)).json()
 
-        assert set(body) == {"name", "slug", "description", "author"}
+        assert set(body) == {
+            "name",
+            "slug",
+            "description",
+            "author",
+            # The blog cannot render without these, and none of them is a
+            # colour — see PublicSiteSerializer.
+            "theme",
+            "appearance",
+            "font_pairing",
+            "accent_hue",
+        }
         assert body["author"] == user_a.display_name
         assert not self.FORBIDDEN & set(body)
         assert user_a.email not in response_text(body)
@@ -166,6 +177,108 @@ class TestNothingPrivateLeaks:
 
         assert body["author"] is None
         assert body["content"] == published.content
+
+
+class TestTheming:
+    """
+    A blog's appearance is published, because the blog cannot be drawn
+    without it. What must never be published — or stored — is anything that
+    lands in a stylesheet as a string.
+    """
+
+    def test_defaults_are_served_when_the_writer_has_chosen_nothing(
+        self, api, site
+    ):
+        body = api.get(site_url(site.slug)).json()
+
+        assert body["theme"] == Site.Theme.PAPER
+        assert body["appearance"] == Site.Appearance.LIGHT
+        assert body["font_pairing"] == Site.FontPairing.EDITORIAL
+        # Null, not a number: "keep whatever accent the theme came with".
+        assert body["accent_hue"] is None
+
+    def test_a_writers_choices_reach_the_reader(self, api, site):
+        site.theme = Site.Theme.SEPIA
+        site.appearance = Site.Appearance.SYSTEM
+        site.font_pairing = Site.FontPairing.PLAIN
+        site.accent_hue = 264
+        site.save()
+
+        body = api.get(site_url(site.slug)).json()
+
+        assert body["theme"] == "sepia"
+        assert body["appearance"] == "system"
+        assert body["font_pairing"] == "plain"
+        assert body["accent_hue"] == 264
+
+    def test_theme_fields_are_not_writable_through_the_public_api(
+        self, api, site
+    ):
+        assert api.patch(site_url(site.slug), {"theme": "mono"}).status_code == 405
+
+        site.refresh_from_db()
+        assert site.theme == Site.Theme.PAPER
+
+
+class TestThemeInputIsBounded:
+    """
+    The hue is formatted into a stylesheet on the blog. That is only safe
+    while it cannot be anything but an integer 0-360, so the bound is a test
+    rather than a comment.
+    """
+
+    SITES_URL = "/api/sites/"
+
+    def url(self, site) -> str:
+        return f"{self.SITES_URL}{site.pk}/"
+
+    def test_a_hue_in_range_is_accepted(self, api_a, site):
+        response = api_a.patch(self.url(site), {"accent_hue": 200}, format="json")
+
+        assert response.status_code == 200
+        site.refresh_from_db()
+        assert site.accent_hue == 200
+
+    @pytest.mark.parametrize("hue", [361, 1000, -1, "red", "12; }"])
+    def test_anything_outside_the_range_is_refused(self, api_a, site, hue):
+        response = api_a.patch(self.url(site), {"accent_hue": hue}, format="json")
+
+        assert response.status_code == 400
+        site.refresh_from_db()
+        assert site.accent_hue is None
+
+    def test_clearing_the_hue_is_allowed(self, api_a, site):
+        site.accent_hue = 120
+        site.save(update_fields=["accent_hue"])
+
+        response = api_a.patch(self.url(site), {"accent_hue": None}, format="json")
+
+        assert response.status_code == 200
+        site.refresh_from_db()
+        assert site.accent_hue is None
+
+    @pytest.mark.parametrize(
+        "field, value",
+        [
+            ("theme", "neon"),
+            ("appearance", "strobe"),
+            ("font_pairing", "comic-sans"),
+            # The shape an injection attempt would take, if these were ever
+            # free text rather than a closed set.
+            ("theme", "paper; background: url(https://evil.example)"),
+        ],
+    )
+    def test_only_known_names_are_accepted(self, api_a, site, field, value):
+        response = api_a.patch(self.url(site), {field: value}, format="json")
+
+        assert response.status_code == 400
+
+    def test_a_writer_cannot_restyle_somebody_elses_blog(self, api_b, site):
+        response = api_b.patch(self.url(site), {"theme": "mono"}, format="json")
+
+        assert response.status_code == 404
+        site.refresh_from_db()
+        assert site.theme == Site.Theme.PAPER
 
 
 class TestPublicEndpointsAreReadOnly:

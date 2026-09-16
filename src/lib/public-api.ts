@@ -16,6 +16,12 @@
 
 import { cache } from "react";
 
+import type {
+  Appearance,
+  FontPairing,
+  ThemeName,
+} from "@/lib/blog-theme";
+
 const BASE_URL = (
   // Server-rendered, so this is read in Node rather than the browser. It is
   // still the NEXT_PUBLIC_ variable because in every environment so far the
@@ -47,6 +53,18 @@ export interface PublicSite {
   description: string;
   /** The writer's display name. */
   author: string;
+
+  /**
+   * How the writer chose to have their blog drawn.
+   *
+   * Names and one bounded number, never colours — `src/lib/blog-theme.ts`
+   * owns the values these select. That is what keeps a theme from being a
+   * way to put a string into a stylesheet.
+   */
+  theme: ThemeName;
+  appearance: Appearance;
+  font_pairing: FontPairing;
+  accent_hue: number | null;
 }
 
 /** One entry on a blog index. */

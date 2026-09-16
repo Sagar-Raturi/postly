@@ -55,6 +55,12 @@
 :root {
   --radius: 0.75rem;
 
+  /* Type on a published blog. Overridden per blog by the stylesheet the
+     blog layout emits — see src/lib/blog-theme.ts. Declared here so the
+     utilities below resolve to something sane everywhere else. */
+  --blog-heading: var(--font-newsreader);
+  --blog-body: var(--font-newsreader);
+
   --background: oklch(0.9895 0.004 95);
   --foreground: oklch(0.215 0.015 62);
 
@@ -147,6 +153,22 @@
 }
 
 @layer utilities {
+  /* Type on a published blog.
+
+     Separate utilities rather than `font-display`, because a blog's family
+     is a writer's choice and the app's is not. Going through variables the
+     blog stylesheet sets keeps the two from having to fight in the cascade
+     — the blog page asks for "the blog's heading font", and the theme
+     decides what that is. */
+  .font-blog-heading {
+    font-family: var(--blog-heading);
+    font-optical-sizing: auto;
+  }
+  .font-blog-body {
+    font-family: var(--blog-body);
+    font-optical-sizing: auto;
+  }
+
   /* Editorial display type: serif, tight, optically balanced. */
   .font-display {
     font-family: var(--font-display);
@@ -406,5 +428,13 @@
 
   .prose-postly img {
     border-radius: var(--radius);
+  }
+
+  /* Inside a published blog the post's own headings follow that blog's
+     pairing. Scoped to the blog wrapper so the dashboard's expanded card —
+     which renders the same markup through the same class — keeps the app's
+     type. */
+  [data-blog-theme] .prose.prose-postly :is(h1, h2, h3, h4) {
+    font-family: var(--blog-heading);
   }
 }

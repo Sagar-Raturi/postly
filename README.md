@@ -18,11 +18,13 @@ Motion. Two independent products, served from one app:
 - **`/{siteSlug}/{postSlug}`** — one published post
 
 The second is not a section of the first. It has no Postly navbar, no dashboard
-chrome, no login, and no `AuthProvider` — which is why the product lives in an
-`(app)` route group rather than at the root. A route group adds no path
+chrome, no login, no `AuthProvider` and no `ThemeProvider` — which is why the
+product lives in an `(app)` route group rather than at the root. A route group adds no path
 segment, so every URL above is exactly where it looks like it is; what it buys
-is a layout boundary, so a stranger reading somebody's blog does not have their
-browser asking the Postly API about a session they do not have.
+is a layout boundary. A stranger reading somebody's blog does not have their
+browser asking the Postly API about a session they do not have — and a reader
+who once put the *marketing site* into dark mode does not thereby restyle
+somebody else's writing, which they did while both providers sat at the root.
 
 ```bash
 npm install
@@ -122,13 +124,14 @@ out in the plugin's greys.
 src/
   middleware.ts           route guard for /dashboard, /login, /signup
   app/
-    layout.tsx            document shell: fonts, theme, no-JS fallback.
-                          Deliberately no AuthProvider — see (app)/layout.tsx
+    layout.tsx            document shell: fonts and the no-JS fallback.
+                          Deliberately no Auth/ThemeProvider — see (app)/
     globals.css           palette, type scale, utilities, editor + post prose
     favicon.ico
 
     (app)/                Postly itself. The route group adds no URL segment.
-      layout.tsx          AuthProvider — the boundary the blog sits outside of
+      layout.tsx          Auth + Theme providers — the boundary the blog
+                          sits outside of
       page.tsx            homepage — composes the nine sections in order
       login/ signup/ verify-email/ forgot-password/
       reset-password/[token]/ onboarding/
@@ -151,7 +154,8 @@ src/
                           examples, pricing, cta-banner, footer, primitives
     dashboard/            dashboard-header, account-menu, site-link-chip,
                           post-list, post-card, post-toolbar, post-editor,
-                          editor-toolbar, settings-panel
+                          editor-toolbar, settings-panel, theme-picker,
+                          theme-preview
     public/               reading-column, blog-header, blog-footer
     mockups/              browser-frame.tsx + screens.tsx
     motion/reveal.tsx     Reveal / Stagger / StaggerItem
@@ -159,6 +163,7 @@ src/
     content.ts            all homepage copy and data
     api.ts                typed client for the private API — session + CSRF
     public-api.ts         typed client for /api/public — no session, no cookies
+    blog-theme.ts         the palettes, and the only place blog colours exist
     form-errors.ts        DRF error bodies → per-field messages
 ```
 
@@ -288,6 +293,53 @@ There is no `generateStaticParams` for `siteSlug`: that would need a list of
 every blog on Postly, and no public endpoint hands one out — it would be a
 directory of every customer. Post slugs *are* pre-rendered, per blog, once
 Next has seen that blog.
+
+### Theming
+
+A writer chooses how their blog looks in **Settings → How your blog looks**,
+and `src/lib/blog-theme.ts` is the only place those colours exist. The
+database stores a name — `"sepia"` — never a value, so picking a theme is
+choosing an index into that table and there is no route by which something a
+writer typed reaches a stylesheet.
+
+| Control | What it offers |
+| --- | --- |
+| Theme | Paper, Slate, Sepia, Mono — each authored in light *and* dark |
+| Appearance | Light, Dark, or follow the reader's `prefers-color-scheme` |
+| Type | Three pairings across the three families already loaded |
+| Accent | One hue, 0–360, on a slider whose track is the hue wheel |
+
+**The accent is a hue and not a colour picker, deliberately.** Every value is
+OKLCH, where lightness is perceptual — so fixing L and C per role and letting
+only H vary keeps contrast exactly where it was designed at all 360 settings.
+A writer cannot produce grey-on-grey, because they are never handed lightness.
+A hex field would also need a dark-mode counterpart for every colour someone
+picks, which is not a thing a writer should have to think about.
+
+The whole surface is **seven variables** — `--background`, `--foreground`,
+`--muted`, `--muted-foreground`, `--border`, `--brand`, `--ring` — plus
+`--blog-heading` and `--blog-body`. `.prose.prose-postly` already maps
+`--tw-prose-*` onto the same tokens, so restyling the shell restyles the post
+body for free. No theming library, no CSS-in-JS: Tailwind v4's `@theme inline`
+and custom properties were already doing this for dark mode.
+
+`blogThemeCss()` emits one `<style>` element from the blog layout, which is a
+Server Component — so the first byte a reader gets is already in the right
+colours. Two details in there are load-bearing:
+
+- **It is a `<style>` element, not a `style` prop**, because "follow the
+  reader" needs `@media (prefers-color-scheme: dark)` and a style attribute
+  cannot express a media query. Nothing in the string comes from user input,
+  so the usual objection to building CSS by concatenation does not apply here.
+- **The selector is `:root:has([data-blog-theme])`**, which is two classes'
+  worth of specificity against `.dark`, and targets `:root` so `<body>` is
+  covered and overscroll does not reveal the app's background.
+
+`color-scheme` carries `!important` because `next-themes` writes it as an
+inline style on `<html>`, and an inline declaration beats any stylesheet rule
+however specific. It should be unreachable now that the provider lives in the
+`(app)` group — but a stale value surviving a client-side navigation would
+give a light blog a dark scrollbar.
 
 **`src/lib/public-api.ts` is the seam Phase 3 turns on.** Every function there
 takes a site slug as its first argument and nothing in the file knows where

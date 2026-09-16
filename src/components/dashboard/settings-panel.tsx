@@ -10,7 +10,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Container } from "@/components/site/primitives";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { SiteLinkChip } from "@/components/dashboard/site-link-chip";
+import { ThemePicker } from "@/components/dashboard/theme-picker";
+import { ThemePreview } from "@/components/dashboard/theme-preview";
 import { useAuth } from "@/components/auth-provider";
+import {
+  DEFAULT_APPEARANCE,
+  DEFAULT_FONT_PAIRING,
+  DEFAULT_THEME,
+  type BlogAppearance,
+} from "@/lib/blog-theme";
 import { ApiError, getCurrentSite, updateSite, type Site } from "@/lib/api";
 
 /**
@@ -33,6 +41,12 @@ export function SettingsPanel() {
   const [loading, setLoading] = React.useState(true);
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
+  const [look, setLook] = React.useState<BlogAppearance>({
+    theme: DEFAULT_THEME,
+    appearance: DEFAULT_APPEARANCE,
+    font_pairing: DEFAULT_FONT_PAIRING,
+    accent_hue: null,
+  });
 
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
@@ -49,6 +63,7 @@ export function SettingsPanel() {
         setSite(current);
         setName(current.name);
         setDescription(current.description);
+        setLook(appearanceOf(current));
       } catch (err) {
         setError(
           err instanceof ApiError
@@ -69,7 +84,9 @@ export function SettingsPanel() {
 
   const dirty =
     site !== null &&
-    (name.trim() !== site.name || description.trim() !== site.description);
+    (name.trim() !== site.name ||
+      description.trim() !== site.description ||
+      !sameAppearance(look, appearanceOf(site)));
 
   async function handleSave(event: React.FormEvent) {
     event.preventDefault();
@@ -81,10 +98,12 @@ export function SettingsPanel() {
       const updated = await updateSite(site.id, {
         name: name.trim(),
         description: description.trim(),
+        ...look,
       });
       setSite(updated);
       setName(updated.name);
       setDescription(updated.description);
+      setLook(appearanceOf(updated));
       setSaved(true);
     } catch (err) {
       setError(
@@ -230,6 +249,49 @@ export function SettingsPanel() {
               </section>
 
               <section className="rounded-2xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
+                <h2 className="font-display text-xl">How your blog looks</h2>
+                <p className="mt-1 text-[0.875rem] text-muted-foreground">
+                  Readers see this. Your dashboard stays as it is.
+                </p>
+
+                <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_17rem]">
+                  <ThemePicker
+                    value={look}
+                    onChange={(patch) =>
+                      setLook((current) => ({ ...current, ...patch }))
+                    }
+                    disabled={saving}
+                  />
+
+                  {/* Sticky, so the preview stays in view while the writer
+                      works down the controls on a tall screen. */}
+                  <div className="lg:sticky lg:top-24 lg:self-start">
+                    <ThemePreview
+                      value={look}
+                      siteName={name}
+                      description={description}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-7 flex items-center gap-3 border-t border-border pt-6">
+                  <Button
+                    className="h-10 rounded-full px-5"
+                    disabled={!dirty || saving}
+                    onClick={handleSave}
+                  >
+                    {saving ? (
+                      <Loader2 aria-hidden className="animate-spin" />
+                    ) : null}
+                    Save changes
+                  </Button>
+                  <p className="text-[0.8rem] text-muted-foreground">
+                    Live within a minute of saving.
+                  </p>
+                </div>
+              </section>
+
+              <section className="rounded-2xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
                 <h2 className="font-display text-xl">Your account</h2>
                 <p className="mt-1 text-[0.875rem] text-muted-foreground">
                   How you sign in, and the name shown on your posts.
@@ -253,5 +315,24 @@ export function SettingsPanel() {
         </Container>
       </main>
     </>
+  );
+}
+
+/** The appearance half of a Site, as the picker and preview want it. */
+function appearanceOf(site: Site): BlogAppearance {
+  return {
+    theme: site.theme,
+    appearance: site.appearance,
+    font_pairing: site.font_pairing,
+    accent_hue: site.accent_hue,
+  };
+}
+
+function sameAppearance(a: BlogAppearance, b: BlogAppearance): boolean {
+  return (
+    a.theme === b.theme &&
+    a.appearance === b.appearance &&
+    a.font_pairing === b.font_pairing &&
+    a.accent_hue === b.accent_hue
   );
 }

@@ -14,7 +14,7 @@ export function BlogHeader({ name, slug }: { name: string; slug: string }) {
       <ReadingColumn>
         <Link
           href={`/${slug}`}
-          className="rounded-sm font-display text-[1.0625rem] tracking-[-0.01em] text-foreground transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="rounded-sm font-blog-heading text-[1.0625rem] tracking-[-0.01em] text-foreground transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           {name}
         </Link>

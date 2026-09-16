@@ -8,6 +8,12 @@
  * `request()` and nowhere else.
  */
 
+import type {
+  Appearance,
+  FontPairing,
+  ThemeName,
+} from "@/lib/blog-theme";
+
 const BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api"
 ).replace(/\/$/, "");
@@ -34,6 +40,12 @@ export interface Site {
   slug: string;
   description: string;
   domain: string;
+  /** How the published blog is drawn — see `src/lib/blog-theme.ts`. */
+  theme: ThemeName;
+  appearance: Appearance;
+  font_pairing: FontPairing;
+  /** An OKLCH hue 0-360, or null for the theme's own accent. */
+  accent_hue: number | null;
   posts_count: number;
   created_at: string;
   updated_at: string;

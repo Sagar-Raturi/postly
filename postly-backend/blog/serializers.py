@@ -19,6 +19,10 @@ class SiteSerializer(serializers.ModelSerializer):
             "slug",
             "description",
             "domain",
+            "theme",
+            "appearance",
+            "font_pairing",
+            "accent_hue",
             "posts_count",
             "created_at",
             "updated_at",
@@ -32,6 +36,21 @@ class SiteSerializer(serializers.ModelSerializer):
             return clean_subdomain(value)
         except DjangoValidationError as exc:
             raise serializers.ValidationError(exc.messages) from exc
+
+    def validate_accent_hue(self, value):
+        """
+        A hue, or nothing.
+
+        The field is a PositiveSmallIntegerField with model validators, and
+        DRF does not run those, so the bound is restated here — this value is
+        formatted into a stylesheet on the public blog, and the fact that it
+        can only ever be an integer 0-360 is what makes that safe.
+        """
+        if value is None:
+            return None
+        if not 0 <= value <= 360:
+            raise serializers.ValidationError("Use a hue between 0 and 360.")
+        return value
 
     def get_posts_count(self, obj: Site) -> int:
         # SiteViewSet annotates this so a list costs one query; a freshly

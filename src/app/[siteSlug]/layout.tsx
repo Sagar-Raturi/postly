@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BlogFooter } from "@/components/public/blog-footer";
 import { BlogHeader } from "@/components/public/blog-header";
+import { BLOG_THEME_ATTRIBUTE, blogThemeCss } from "@/lib/blog-theme";
 import { getPublicSite, metaDescription } from "@/lib/public-api";
 
 /**
@@ -58,7 +59,21 @@ export default async function BlogLayout({
   if (!site) notFound();
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div
+      {...{ [BLOG_THEME_ATTRIBUTE]: "" }}
+      className="flex min-h-full flex-1 flex-col font-blog-body"
+    >
+      {/*
+        The blog's palette, server-rendered, so the first byte a reader gets
+        is already in the right colours — applying it after hydration would
+        flash the default theme on every cold load.
+
+        Not built from anything a writer typed: the values are constants in
+        lib/blog-theme.ts, selected by name, and the only writer-controlled
+        number in here is an integer hue the API bounds to 0-360.
+      */}
+      <style>{blogThemeCss(site)}</style>
+
       <BlogHeader name={site.name} slug={site.slug} />
       <main className="flex-1">{children}</main>
       <BlogFooter />
