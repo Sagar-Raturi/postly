@@ -146,23 +146,56 @@ pip install -r requirements.txt
 cp .env.example .env               # optional; sensible defaults without it
 
 python manage.py migrate
-python manage.py seed_demo_site    # optional; a ready-made demo login
+python manage.py seed_sagar        # the demo blog the dashboard and public
+                                   # site are built against
 python manage.py runserver 8000
 ```
 
 The API is then at <http://localhost:8000/api/> and the admin at
 <http://localhost:8000/admin/>.
 
-`seed_demo_site` is a shortcut, not a requirement — you can sign up through the
-UI instead. It creates a demo account whose address is already verified, so you
-can log in immediately without going via the console email:
+### Seed data
+
+`seed_sagar` builds the blog everything is demonstrated on: a verified account,
+one site, and ten posts — eight published, two drafts — with real prose of
+varying length so read times and excerpt truncation are exercised against
+something other than uniform filler.
 
 ```
-demo@postly.test / small-hours-demo
+sagar@example.com / postly1234        the blog is at /sagar
 ```
 
-Pass `--email` and `--password` to change those, or `--reset` to wipe the demo
-posts and start again.
+It is idempotent: the user is matched on email, the site on slug, and each post
+on (site, title), so running it twice adds nothing and a body you edited in the
+dashboard survives a re-run. Pass `--reset` to put the posts back to the
+originals.
+
+`seed_dummy_posts` adds numbered filler on top, for testing against volume:
+
+```bash
+python manage.py seed_dummy_posts              # 10 more onto /sagar
+python manage.py seed_dummy_posts --count 15   # enough to cross a page
+python manage.py seed_dummy_posts --delete     # take them away again
+```
+
+It is a separate command from `seed_sagar` on purpose. That one is a fixture —
+real prose, chosen so the typography and the read-time estimates are exercised
+against something plausible. This one is scaffolding: every post is titled
+`Dummy Post NN` and every body opens "Lorem ipsum", so you can tell at a glance
+which is which, and `--reset` and `--delete` match on that title prefix rather
+than emptying the blog. Bodies are generated but seeded per index, so the same
+post always gets the same text; lengths run from about 90 to about 570 words
+and the markup rotates through headings, lists and quotes. Roughly every fourth
+is left as a draft.
+
+Past 20 posts — `--count 15` on top of the seeded ten — both the dashboard's
+`getAllPosts()` and the blog index's page-following do more than one request,
+which is otherwise hard to reach.
+
+`seed_demo_site` is the older, smaller fixture — one writer, three posts, at
+`demo@postly.test` / `small-hours-demo`. It takes `--email`, `--password` and
+`--reset`. None of these is required; you can sign up through the UI instead,
+and fish the confirmation link out of the console.
 
 ## Running the Next.js frontend
 
@@ -187,12 +220,23 @@ dashboard shows a connection error, Django is not up.
 pytest
 ```
 
-135 tests. Model save logic (slug generation and collisions, excerpt
-derivation, publish/unpublish timestamps), every API endpoint (CRUD,
-filtering, pagination, validation errors), the auth flows (signup, mandatory
-verification, login and logout, throttling, password reset and change), and
-tenancy — that one account cannot read, edit or delete another's blogs and
-posts, and gets a 404 rather than a 403 when it tries.
+162 tests. Model save logic (slug generation and collisions, excerpt
+derivation, read-time rounding, publish/unpublish timestamps), every API
+endpoint (CRUD, filtering, pagination, validation errors), the auth flows
+(signup, mandatory verification, login and logout, throttling, password reset
+and change), and tenancy — that one account cannot read, edit or delete
+another's blogs and posts, and gets a 404 rather than a 403 when it tries.
+
+`blog/tests/test_public_api.py` covers the anonymous API on its own, because
+its failure modes are different from everything else's:
+
+- a draft is a **404** from the public post endpoint, and absent from the
+  public list, and `?status=draft` does not bring it back;
+- the public payloads are pinned field by field — no owner email, no user or
+  site id, no `status`, no internal timestamps;
+- the public endpoints answer while logged out, and the dashboard endpoints
+  still **401** while logged out;
+- post bodies come back sanitised.
 
 ## Using Postgres instead of SQLite
 
@@ -207,10 +251,48 @@ DATABASE_URL=postgres://postly:postly@localhost:5432/postly
 
 ## API
 
-Everything requires a session. Anonymous requests get **401**, not 403 — a
-custom `SessionAuthentication` subclass supplies a `WWW-Authenticate` header,
-because DRF otherwise downgrades the status and the frontend cannot tell
-"signed out" from "not allowed".
+There are two surfaces, and the split matters.
+
+**`/api/…` is private.** Everything under it requires a session. Anonymous
+requests get **401**, not 403 — a custom `SessionAuthentication` subclass
+supplies a `WWW-Authenticate` header, because DRF otherwise downgrades the
+status and the frontend cannot tell "signed out" from "not allowed".
+
+**`/api/public/…` is deliberately open**, and it is the only thing that is. It
+serves published blogs to readers who have no Postly account, it is read-only,
+and it lives in its own three files (`public_urls.py`, `public_views.py`,
+`public_serializers.py`) so the entire public surface can be read end to end in
+a couple of minutes.
+
+### Public — no session, read-only
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/api/public/sites/{slug}/` | name, slug, description, author display name |
+| `GET` | `/api/public/sites/{slug}/posts/` | published posts only, paginated, newest first |
+| `GET` | `/api/public/sites/{slug}/posts/{postSlug}/` | one published post, with its body |
+
+What holds across all three:
+
+- **Drafts do not exist here.** The status filter lives in one function,
+  `public_views.published_posts()`, and a draft's slug is a **404** — the same
+  answer a post that was never written gets, so guessing at the URL of an
+  unpublished draft tells a reader nothing.
+- **The serializers are an allowlist, not an exclusion list.** They name the
+  public fields explicitly, so a field added to the dashboard serializers later
+  cannot leak onto the public internet by default. There is no owner email, no
+  user id, no site id, no `status` and no `created_at`/`updated_at`.
+- **Nothing is client-filterable.** No `?status=`, no `?ordering=` — a reader
+  choosing the ordering is not a feature, and `?status=draft` would be a way of
+  asking for one.
+- **Post bodies are sanitised on the way out** (`blog/sanitize.py`). A body is
+  HTML a person wrote, and until Phase 3 gives each blog its own subdomain it is
+  rendered to *other people* on the same origin as the dashboard — so a
+  `<script>` in somebody's post would run with a reading writer's session behind
+  it. nh3 strips everything outside an allowlist of the tags the editor actually
+  produces. It is done on the way out rather than on the way in, so stored
+  content is never rewritten and the editor gets its own markup back byte for
+  byte.
 
 ### Auth
 
@@ -257,9 +339,15 @@ Notes on behaviour worth knowing:
   so a post cannot be filed on someone else's — an object-level check cannot
   catch that one, because the post does not exist yet.
 
-- **`GET /api/posts/` omits `content`.** The dashboard list only needs titles
-  and metadata; the detail endpoints return the full body. `PostListSerializer`
-  vs `PostSerializer`.
+- **`GET /api/posts/` includes `content`.** It did not used to. The dashboard
+  card now renders an excerpt, expands in place to the full post, and searches
+  body text as well as titles — all three want the body, and fetching it per
+  card on expand would trade one predictable request for an unpredictable
+  number of small ones. Pagination bounds the cost. `PostListSerializer` still
+  drops `site_name` and `author_name`, which are the same on every row.
+- **`read_time_minutes` is computed server-side**, from the word count of the
+  stripped body at 200wpm, rounded up, never zero. Both the dashboard and the
+  published post read it from the API, so the two cannot disagree.
 - **`slug` and `published_at` are read-only.** Both are derived in
   `Post.save()`; sending them is ignored.
 - **Slugs are generated once**, from the title, on first save, and are then
@@ -302,15 +390,22 @@ postly-backend/
 │   ├── management/commands/verification_link.py
 │   └── tests/
 └── blog/
-    ├── models.py            Site (owner), Post (author)
-    ├── serializers.py       list vs detail representations
-    ├── views.py             ViewSets, filtered by request.user
+    ├── models.py            Site (owner), Post (author), read time
+    ├── serializers.py       list vs detail representations      ─┐ private
+    ├── views.py             ViewSets, filtered by request.user   │ API
+    ├── urls.py              DRF router                          ─┘
+    ├── public_serializers.py  allowlist of public fields        ─┐ public
+    ├── public_views.py        AllowAny, published posts only     │ API
+    ├── public_urls.py         /api/public/                      ─┘
+    ├── sanitize.py          allowlist HTML cleaning, on the way out
     ├── onboarding.py        first blog, slug availability
     ├── subdomains.py        DNS rules and reserved names for slugs
     ├── filters.py           ?site= and ?status=
-    ├── urls.py              DRF router
     ├── admin.py
-    ├── management/commands/seed_demo_site.py
+    ├── management/commands/
+    │   ├── seed_sagar.py    the demo blog; prose lives in _sagar_posts.py
+    │   ├── seed_dummy_posts.py  numbered filler; lorem in _lorem.py
+    │   └── seed_demo_site.py
     └── tests/
 ```
 
@@ -338,7 +433,9 @@ generates the matching pair. There is a test pinning this
 ## Phase 3 — not built
 
 - Subdomain middleware resolving `<slug>.postly.com` to a `Site` (there is a
-  placeholder in the `MIDDLEWARE` list) — `Site.domain` already builds the name
-- Public blog rendering
+  placeholder in the `MIDDLEWARE` list) — `Site.domain` already builds the name.
+  The public API does not need it: the slug is a path parameter, and where the
+  frontend gets that slug is the only thing that changes. See the note at the
+  top of `blog/public_urls.py`.
 - Multiple blogs per account (the models allow it; onboarding caps it at one)
 - Image uploads to S3 via `django-storages`; `MEDIA_ROOT` is local for now

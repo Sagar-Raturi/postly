@@ -1,8 +1,20 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/components/auth-provider";
 import "./globals.css";
+
+/**
+ * The document shell, and nothing else.
+ *
+ * Postly serves two independent things from one Next.js app: the product
+ * (marketing, auth, dashboard) under `(app)/`, and every writer's published
+ * blog under `[siteSlug]/`. Only the first needs to know who is signed in,
+ * so `AuthProvider` lives in `(app)/layout.tsx` rather than here — a reader
+ * on somebody's blog should not have their browser asking the Postly API
+ * about a session they do not have.
+ *
+ * What is shared is genuinely shared: fonts, the palette, and the theme.
+ */
 
 const inter = Inter({
   variable: "--font-inter",
@@ -54,7 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           enableSystem={false}
           disableTransitionOnChange
         >
-          <AuthProvider>{children}</AuthProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>

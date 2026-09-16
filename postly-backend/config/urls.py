@@ -6,6 +6,10 @@ from django.urls import include, path
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("accounts.urls")),
+    # Anonymous and read-only: what a published blog serves to readers
+    # with no Postly account. Listed above the private API so the two
+    # surfaces are visibly separate.
+    path("api/public/", include("blog.public_urls")),
     path("api/", include("blog.urls")),
 ]
 

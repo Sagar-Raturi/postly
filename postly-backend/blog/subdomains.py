@@ -22,9 +22,15 @@ MAX_LENGTH = 63  # a DNS label may not exceed this
 
 # Names that have to stay available for Postly itself, whether or not they
 # are currently pointed at anything.
+#
+# Until Phase 3 moves blogs onto real subdomains they are served at
+# postly.com/<slug>, so this list has to cover the app's own top-level paths
+# as well: a blog at /onboarding would be shadowed by the app's route and
+# unreachable to its readers.
 RESERVED_SLUGS = frozenset(
     {
         "about",
+        "account",
         "admin",
         "api",
         "app",
@@ -35,6 +41,7 @@ RESERVED_SLUGS = frozenset(
         "dashboard",
         "dev",
         "docs",
+        "forgot-password",
         "ftp",
         "help",
         "imap",
@@ -44,16 +51,21 @@ RESERVED_SLUGS = frozenset(
         "media",
         "ns1",
         "ns2",
+        "onboarding",
         "postly",
+        "posts",
+        "reset-password",
         "root",
+        "settings",
         "signup",
         "smtp",
-        "www",
         "static",
         "status",
         "support",
         "test",
+        "verify-email",
         "webmail",
+        "www",
     }
 )
 

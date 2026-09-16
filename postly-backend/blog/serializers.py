@@ -45,6 +45,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     site_name = serializers.CharField(source="site.name", read_only=True)
     author_name = serializers.CharField(source="author.display_name", read_only=True)
+    read_time_minutes = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Post
@@ -57,6 +58,7 @@ class PostSerializer(serializers.ModelSerializer):
             "slug",
             "content",
             "excerpt",
+            "read_time_minutes",
             "status",
             "published_at",
             "created_at",
@@ -67,6 +69,7 @@ class PostSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "slug",
+            "read_time_minutes",
             "published_at",
             "created_at",
             "updated_at",
@@ -93,9 +96,22 @@ class PostListSerializer(serializers.ModelSerializer):
     """
     Lighter representation for the list endpoint.
 
-    Deliberately omits `content`: the dashboard list only renders titles and
-    metadata, and twenty posts' worth of editor HTML is a lot to send for that.
+    This used to omit `content` — twenty posts' worth of editor HTML is a
+    lot to send to render a row of titles. The dashboard no longer renders a
+    row of titles: each card carries an excerpt, expands in place to show the
+    full post, and the search box filters on body text as well as titles.
+    All three want the body, and fetching it per card on expand would trade
+    one predictable request for an unpredictable number of small ones.
+
+    The cost is bounded by pagination (PAGE_SIZE 20), and what is omitted
+    now is the things a list has no use for: `site_name` and `author_name`
+    are the same on every row for a single writer's blog.
+
+    `read_time_minutes` is computed server-side so the dashboard and the
+    published post always agree on the number.
     """
+
+    read_time_minutes = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Post
@@ -104,7 +120,9 @@ class PostListSerializer(serializers.ModelSerializer):
             "site",
             "title",
             "slug",
+            "content",
             "excerpt",
+            "read_time_minutes",
             "status",
             "published_at",
             "created_at",

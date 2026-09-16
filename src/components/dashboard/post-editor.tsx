@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Container } from "@/components/site/primitives";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { EditorToolbar } from "@/components/dashboard/editor-toolbar";
-import { StatusBadge } from "@/components/dashboard/post-list";
+import { StatusBadge } from "@/components/dashboard/post-card";
 import {
   ApiError,
   getPost,
@@ -210,7 +210,6 @@ export function PostEditor({ postId }: { postId: number }) {
   return (
     <>
       <DashboardHeader
-        siteName={post?.site_name}
         actions={
           <div className="flex items-center gap-2">
             <SaveIndicator state={saveState} dirty={isDirty} />

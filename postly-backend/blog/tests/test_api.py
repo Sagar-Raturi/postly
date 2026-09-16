@@ -64,10 +64,17 @@ class TestPostEndpoints:
         assert response.status_code == 200
         assert response.json()["count"] == 2
 
-    def test_list_omits_content_to_keep_the_payload_small(self, api_a, draft):
+    def test_list_carries_what_a_dashboard_card_renders(self, api_a, draft):
+        """
+        The card shows an excerpt and a read time, and expands in place to
+        the full body, so the list has to carry all three. It used to omit
+        `content`; see PostListSerializer for why that changed.
+        """
         row = api_a.get(POSTS_URL).json()["results"][0]
-        assert "content" not in row
-        assert "excerpt" in row
+
+        assert row["content"] == draft.content
+        assert row["excerpt"]
+        assert row["read_time_minutes"] >= 1
 
     def test_retrieve_includes_content(self, api_a, draft):
         response = api_a.get(f"{POSTS_URL}{draft.pk}/")

@@ -1,3 +1,4 @@
+import * as React from "react";
 import Link from "next/link";
 import { Logo } from "@/components/site/logo";
 import { ThemeToggle } from "@/components/site/theme-toggle";
@@ -5,52 +6,33 @@ import { Container } from "@/components/site/primitives";
 import { AccountMenu } from "@/components/dashboard/account-menu";
 
 /**
- * Dashboard chrome. Mirrors the marketing navbar's proportions so the two
- * halves of the product feel like one thing.
+ * The dashboard's top bar.
+ *
+ * The logo is the same mark and wordmark the marketing site uses, and it
+ * links back to `/` — the dashboard is a room inside Postly, not a separate
+ * product, and the writer should be able to get to the front of the
+ * building.
+ *
+ * The writer's own site address deliberately does not appear here. It lives
+ * in one place, the chip directly below this bar. See site-link-chip.tsx.
+ *
+ * `actions` is for controls that belong to one screen rather than to the
+ * dashboard — the editor puts its save indicator and Publish button there.
  */
-export function DashboardHeader({
-  siteName,
-  siteDomain,
-  actions,
-}: {
-  siteName?: string;
-  siteDomain?: string;
-  actions?: React.ReactNode;
-}) {
+export function DashboardHeader({ actions }: { actions?: React.ReactNode }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
       <Container className="max-w-5xl">
         <div className="flex h-16 items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <Logo />
-              <span className="sr-only">Postly dashboard</span>
-            </Link>
+          <Link
+            href="/"
+            className="rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <Logo />
+            <span className="sr-only">Postly home</span>
+          </Link>
 
-            {siteName ? (
-              <>
-                <span
-                  aria-hidden
-                  className="h-5 w-px shrink-0 bg-border max-sm:hidden"
-                />
-                <span className="min-w-0 max-sm:hidden">
-                  <span className="block truncate text-[0.85rem] font-medium">
-                    {siteName}
-                  </span>
-                  {siteDomain ? (
-                    <span className="block truncate font-mono text-[0.68rem] text-muted-foreground">
-                      {siteDomain}
-                    </span>
-                  ) : null}
-                </span>
-              </>
-            ) : null}
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             <ThemeToggle />
             {actions}
             <AccountMenu />

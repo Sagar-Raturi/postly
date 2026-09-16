@@ -26,6 +26,13 @@ django-environ==0.14.0
 # --- Media ------------------------------------------------------------------
 pillow==12.3.0
 
+# --- Content safety ---------------------------------------------------------
+# Post bodies are HTML written by a person and rendered to other people on a
+# Postly origin, so they are run through an allowlist on the way out of the
+# public API. nh3 wraps Rust's ammonia: a real HTML parser rather than a
+# regex. See blog/sanitize.py.
+nh3==0.3.7
+
 # --- Database ---------------------------------------------------------------
 # Only needed when DATABASE_URL points at Postgres; harmless otherwise.
 psycopg[binary]==3.3.5

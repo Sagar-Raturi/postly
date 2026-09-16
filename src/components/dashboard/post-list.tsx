@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FilePlus2, Loader2, PenLine, Trash2, TriangleAlert } from "lucide-react";
+import { FilePlus2, Loader2, PenLine, SearchX, TriangleAlert } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,60 +13,57 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Container } from "@/components/site/primitives";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { PostCard } from "@/components/dashboard/post-card";
+import { SiteLinkChip } from "@/components/dashboard/site-link-chip";
+import {
+  PostToolbar,
+  type PostSort,
+  type PostTab,
+} from "@/components/dashboard/post-toolbar";
 import {
   ApiError,
   createPost,
   deletePost,
+  getAllPosts,
   getCurrentSite,
-  getPosts,
   type PostListItem,
   type Site,
 } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
-function formatEdited(iso: string): string {
-  const date = new Date(iso);
-  const minutes = Math.round((Date.now() - date.getTime()) / 60000);
-
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (minutes < 60 * 24) return `${Math.round(minutes / 60)}h ago`;
-  if (minutes < 60 * 24 * 7) return `${Math.round(minutes / (60 * 24))}d ago`;
-
-  return date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
-  });
+/** Plain text of a post body, for the search box to match against. */
+function searchableText(post: PostListItem): string {
+  return `${post.title} ${post.content.replace(/<[^>]*>/g, " ")}`.toLowerCase();
 }
 
-export function StatusBadge({ status }: { status: PostListItem["status"] }) {
-  const published = status === "published";
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "h-5 shrink-0 gap-1.5 px-2 text-[0.65rem] font-medium",
-        published
-          ? "border-brand/30 bg-brand/10 text-brand"
-          : "text-muted-foreground",
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "size-1.5 rounded-full",
-          published ? "bg-brand" : "bg-muted-foreground/50",
-        )}
-      />
-      {published ? "Published" : "Draft"}
-    </Badge>
-  );
+function sortPosts(posts: PostListItem[], sort: PostSort): PostListItem[] {
+  const sorted = [...posts];
+
+  switch (sort) {
+    case "title":
+      return sorted.sort((a, b) =>
+        a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+      );
+
+    case "published":
+      // Drafts have no published date. They sort to the bottom rather than
+      // to 1970, which is where an epoch fallback would put them.
+      return sorted.sort((a, b) => {
+        if (!a.published_at && !b.published_at) {
+          return b.updated_at.localeCompare(a.updated_at);
+        }
+        if (!a.published_at) return 1;
+        if (!b.published_at) return -1;
+        return b.published_at.localeCompare(a.published_at);
+      });
+
+    case "edited":
+    default:
+      return sorted.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  }
 }
 
 export function PostList() {
@@ -77,7 +73,17 @@ export function PostList() {
   const [posts, setPosts] = React.useState<PostListItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const [tab, setTab] = React.useState<PostTab>("all");
+  const [sort, setSort] = React.useState<PostSort>("edited");
+  const [query, setQuery] = React.useState("");
+
+  // Which cards are open. A Set rather than a single id, so a writer can
+  // have two posts open side by side to compare them.
+  const [expanded, setExpanded] = React.useState<Set<number>>(new Set());
+
   const [creating, setCreating] = React.useState(false);
+  const [duplicatingId, setDuplicatingId] = React.useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<PostListItem | null>(
     null,
   );
@@ -98,8 +104,8 @@ export function PostList() {
         router.replace("/onboarding");
         return;
       }
-      const { results } = await getPosts({ site: currentSite.id });
-      setPosts(results);
+
+      setPosts(await getAllPosts({ site: currentSite.id }));
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -112,10 +118,42 @@ export function PostList() {
   }, [router]);
 
   React.useEffect(() => {
+    // Wrapped rather than called directly: `load` sets state, and the lint
+    // rule (rightly) objects to a setState reachable synchronously from an
+    // effect body.
     void (async () => {
       await load();
     })();
   }, [load]);
+
+  const counts = React.useMemo(
+    () => ({
+      all: posts.length,
+      published: posts.filter((p) => p.status === "published").length,
+      draft: posts.filter((p) => p.status === "draft").length,
+    }),
+    [posts],
+  );
+
+  const visible = React.useMemo(() => {
+    const needle = query.trim().toLowerCase();
+
+    const filtered = posts.filter((post) => {
+      if (tab !== "all" && post.status !== tab) return false;
+      if (!needle) return true;
+      return searchableText(post).includes(needle);
+    });
+
+    return sortPosts(filtered, sort);
+  }, [posts, tab, sort, query]);
+
+  function toggleExpanded(id: number) {
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }
 
   async function handleCreate() {
     if (!site || creating) return;
@@ -133,12 +171,43 @@ export function PostList() {
     }
   }
 
+  async function handleDuplicate(post: PostListItem) {
+    if (duplicatingId !== null) return;
+    setDuplicatingId(post.id);
+    try {
+      // Always a draft, whatever the original was: a copy made by accident
+      // must not appear on the live blog. The excerpt is left out so the
+      // backend re-derives it from the body.
+      const copy = await createPost({
+        site: post.site,
+        title: `${post.title} (copy)`,
+        content: post.content,
+        status: "draft",
+      });
+      // Placed at the top of the list rather than re-fetching: the copy is
+      // the most recently edited post, which is where the default sort puts
+      // it anyway.
+      setPosts((current) => [copy, ...current]);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.detail : "Could not duplicate the post.",
+      );
+    } finally {
+      setDuplicatingId(null);
+    }
+  }
+
   async function handleDelete() {
     if (!pendingDelete) return;
     setDeleting(true);
     try {
       await deletePost(pendingDelete.id);
       setPosts((current) => current.filter((p) => p.id !== pendingDelete.id));
+      setExpanded((current) => {
+        const next = new Set(current);
+        next.delete(pendingDelete.id);
+        return next;
+      });
       setPendingDelete(null);
     } catch (err) {
       setError(
@@ -149,32 +218,29 @@ export function PostList() {
     }
   }
 
-  const newPostButton = (
-    <Button
-      className="h-9 rounded-full px-4 text-[0.85rem]"
-      onClick={handleCreate}
-      disabled={!site || creating}
-    >
-      {creating ? (
-        <Loader2 aria-hidden className="animate-spin" />
-      ) : (
-        <FilePlus2 aria-hidden />
-      )}
-      New post
-    </Button>
-  );
+  const searching = query.trim().length > 0;
 
   return (
     <>
-      <DashboardHeader
-        siteName={site?.name}
-        siteDomain={site?.domain}
-        actions={newPostButton}
-      />
+      <DashboardHeader />
+
+      {/* The site link chip: directly under the top bar, above everything
+          else, and nowhere else in the product. */}
+      <div className="border-b border-border/70 bg-muted/30">
+        <Container className="max-w-5xl">
+          <div className="flex h-14 items-center">
+            {site ? (
+              <SiteLinkChip domain={site.domain} href={`/${site.slug}`} />
+            ) : (
+              <Skeleton className="h-8 w-64 rounded-full" />
+            )}
+          </div>
+        </Container>
+      </div>
 
       <main className="flex-1 py-10 sm:py-14">
         <Container className="max-w-5xl">
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="font-display text-3xl tracking-[-0.02em] sm:text-4xl">
                 Posts
@@ -182,9 +248,22 @@ export function PostList() {
               <p className="mt-1.5 text-[0.9rem] text-muted-foreground">
                 {loading
                   ? "Loading…"
-                  : `${posts.length} ${posts.length === 1 ? "post" : "posts"}`}
+                  : `${counts.all} ${counts.all === 1 ? "post" : "posts"} · ${counts.published} live`}
               </p>
             </div>
+
+            <Button
+              className="h-10 rounded-full px-4"
+              onClick={handleCreate}
+              disabled={!site || creating}
+            >
+              {creating ? (
+                <Loader2 aria-hidden className="animate-spin" />
+              ) : (
+                <FilePlus2 aria-hidden />
+              )}
+              New post
+            </Button>
           </div>
 
           {error ? (
@@ -212,54 +291,52 @@ export function PostList() {
             </div>
           ) : null}
 
-          <div className="mt-8">
+          {/* The toolbar is hidden while loading and on a blog with no posts:
+              there is nothing to filter, and an empty state reads better
+              without a row of controls above it. */}
+          {!loading && site && posts.length > 0 ? (
+            <div className="mt-8">
+              <PostToolbar
+                tab={tab}
+                onTabChange={setTab}
+                counts={counts}
+                sort={sort}
+                onSortChange={setSort}
+                query={query}
+                onQueryChange={setQuery}
+              />
+            </div>
+          ) : null}
+
+          <div className="mt-6">
             {loading ? (
-              <LoadingRows />
+              <LoadingCards />
             ) : !site ? (
               <NoSiteState />
             ) : posts.length === 0 ? (
               <EmptyState onCreate={handleCreate} creating={creating} />
+            ) : visible.length === 0 ? (
+              <NoMatchesState
+                searching={searching}
+                onClear={() => {
+                  setQuery("");
+                  setTab("all");
+                }}
+              />
             ) : (
-              <ul className="divide-y divide-border overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-                {posts.map((post) => (
-                  <li key={post.id} className="group relative">
-                    <Link
-                      href={`/dashboard/posts/${post.id}`}
-                      className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-display text-[1.05rem] leading-snug">
-                          {post.title}
-                        </span>
-                        {post.excerpt ? (
-                          <span className="mt-0.5 block truncate text-[0.82rem] text-muted-foreground">
-                            {post.excerpt}
-                          </span>
-                        ) : null}
-                      </span>
-
-                      <StatusBadge status={post.status} />
-
-                      <span className="w-20 shrink-0 text-right font-mono text-[0.7rem] text-muted-foreground max-sm:hidden">
-                        {formatEdited(post.updated_at)}
-                      </span>
-
-                      {/* Spacer so the row text never sits under the delete button. */}
-                      <span aria-hidden className="w-8 shrink-0" />
-                    </Link>
-
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Delete “${post.title}”`}
-                      className="absolute top-1/2 right-4 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
-                      onClick={() => setPendingDelete(post)}
-                    >
-                      <Trash2 aria-hidden />
-                    </Button>
-                  </li>
+              <div className="space-y-4">
+                {visible.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    expanded={expanded.has(post.id)}
+                    onToggle={() => toggleExpanded(post.id)}
+                    onDuplicate={() => void handleDuplicate(post)}
+                    onDelete={() => setPendingDelete(post)}
+                    duplicating={duplicatingId === post.id}
+                  />
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         </Container>
@@ -275,8 +352,11 @@ export function PostList() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this post?</AlertDialogTitle>
             <AlertDialogDescription>
-              “{pendingDelete?.title}” will be permanently deleted. This cannot
-              be undone.
+              “{pendingDelete?.title}” will be permanently deleted
+              {pendingDelete?.status === "published"
+                ? " and will disappear from your live blog"
+                : ""}
+              . This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -298,19 +378,28 @@ export function PostList() {
   );
 }
 
-function LoadingRows() {
+/**
+ * Skeleton cards, not a spinner: the shapes are the shapes that are coming,
+ * so the page does not jump when the data lands.
+ */
+function LoadingCards() {
   return (
-    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+    <div className="space-y-4">
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="flex items-center gap-4 border-b border-border px-5 py-4 last:border-0"
+          className="rounded-2xl bg-card px-6 py-6 ring-1 ring-foreground/10 sm:px-8 sm:py-7"
         >
-          <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-3 w-2/3" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-5 w-20 rounded-full" />
+            <Skeleton className="h-3 w-28" />
           </div>
-          <Skeleton className="h-5 w-16 rounded-full" />
+          <Skeleton className="mt-4 h-7 w-2/3" />
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-11/12" />
+            <Skeleton className="h-3.5 w-4/6" />
+          </div>
         </div>
       ))}
     </div>
@@ -325,17 +414,17 @@ function EmptyState({
   creating: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-card px-6 py-16 text-center ring-1 ring-foreground/10">
+    <div className="rounded-2xl bg-card px-6 py-20 text-center ring-1 ring-foreground/10">
       <span className="mx-auto flex size-11 items-center justify-center rounded-xl bg-brand/10 text-brand">
         <PenLine aria-hidden className="size-5" />
       </span>
-      <h2 className="mt-5 font-display text-xl">Nothing written yet</h2>
-      <p className="mx-auto mt-2 max-w-sm text-[0.9rem] text-pretty text-muted-foreground">
+      <h2 className="mt-5 font-display text-2xl">Nothing written yet</h2>
+      <p className="mx-auto mt-2.5 max-w-sm text-[0.95rem] text-pretty text-muted-foreground">
         Your first post does not have to be good. It only has to exist. You can
         always come back and fix it.
       </p>
       <Button
-        className="mt-6 h-10 rounded-full px-5"
+        className="mt-7 h-10 rounded-full px-5"
         onClick={onCreate}
         disabled={creating}
       >
@@ -350,13 +439,41 @@ function EmptyState({
   );
 }
 
+/** There are posts, but none of them match the current filter or search. */
+function NoMatchesState({
+  searching,
+  onClear,
+}: {
+  searching: boolean;
+  onClear: () => void;
+}) {
+  return (
+    <div className="rounded-2xl bg-card px-6 py-16 text-center ring-1 ring-foreground/10">
+      <span className="mx-auto flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+        <SearchX aria-hidden className="size-4.5" />
+      </span>
+      <h2 className="mt-4 font-display text-xl">
+        {searching ? "No posts match that" : "Nothing in here yet"}
+      </h2>
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-5 rounded-full"
+        onClick={onClear}
+      >
+        Show all posts
+      </Button>
+    </div>
+  );
+}
+
 /**
  * Briefly visible while load() redirects an account that has no blog yet
  * to /onboarding.
  */
 function NoSiteState() {
   return (
-    <div className="rounded-xl bg-card px-6 py-16 text-center ring-1 ring-foreground/10">
+    <div className="rounded-2xl bg-card px-6 py-16 text-center ring-1 ring-foreground/10">
       <h2 className="font-display text-xl">Setting things up</h2>
       <p className="mx-auto mt-2 max-w-md text-[0.9rem] text-pretty text-muted-foreground">
         Taking you to name your blog…

@@ -39,22 +39,32 @@ export interface Site {
   updated_at: string;
 }
 
-/** What `GET /api/posts/` returns. Deliberately has no `content`. */
+/**
+ * What `GET /api/posts/` returns.
+ *
+ * Carries the body: the dashboard card renders it inline when a post is
+ * expanded, and the search box filters on it. See PostListSerializer for
+ * the full reasoning.
+ */
 export interface PostListItem {
   id: number;
   site: number;
   title: string;
   slug: string;
+  content: string;
   excerpt: string;
+  /** Word count over 200wpm, rounded up. Computed by the API so the
+   *  dashboard and the published post never disagree. */
+  read_time_minutes: number;
   status: PostStatus;
   published_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
-/** What the detail endpoints return — the list fields plus the body. */
+/** What the detail endpoints return — the list fields plus the blog and
+ *  author names, which are the same on every row of a single blog. */
 export interface Post extends PostListItem {
-  content: string;
   site_name: string;
   author_name: string | null;
 }
@@ -70,6 +80,7 @@ export interface PostFilters {
   site?: number;
   status?: PostStatus;
   search?: string;
+  page?: number;
 }
 
 export type PostInput = {
@@ -404,6 +415,34 @@ export function getPosts(
   filters: PostFilters = {},
 ): Promise<Paginated<PostListItem>> {
   return request<Paginated<PostListItem>>(`/posts/${buildQuery(filters)}`);
+}
+
+/** Stops one blog from walking an unbounded number of pages. */
+const MAX_POST_PAGES = 25;
+
+/**
+ * Every post on a blog, across pages.
+ *
+ * The dashboard filters, sorts and counts in the browser, so it needs the
+ * whole set rather than the API's first twenty — otherwise the "Drafts (2)"
+ * tab is counting page one and quietly lying.
+ */
+export async function getAllPosts(
+  filters: PostFilters = {},
+): Promise<PostListItem[]> {
+  const first = await getPosts(filters);
+  const posts = [...first.results];
+
+  for (let page = 2; page <= MAX_POST_PAGES; page += 1) {
+    if (posts.length >= first.count) break;
+
+    const next = await getPosts({ ...filters, page });
+    if (!next.results.length) break;
+
+    posts.push(...next.results);
+  }
+
+  return posts;
 }
 
 export function getPost(id: number): Promise<Post> {

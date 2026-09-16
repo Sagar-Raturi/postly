@@ -1,4 +1,5 @@
 import re
+from math import ceil
 
 from django.conf import settings
 from django.db import models
@@ -7,6 +8,11 @@ from django.utils.html import strip_tags
 from django.utils.text import Truncator, slugify
 
 EXCERPT_LENGTH = 200
+
+# Words a minute, for the read-time estimate shown in the dashboard and on
+# published posts. 200 is the usual figure for adult silent reading of
+# ordinary prose; the number only has to be defensible, not exact.
+READING_WORDS_PER_MINUTE = 200
 
 # Tags that imply a line break, so the text either side must not be glued
 # together when the markup is stripped for an excerpt.
@@ -111,16 +117,35 @@ class Post(models.Model):
             suffix += 1
         return candidate
 
-    def _build_excerpt(self) -> str:
-        """First couple of sentences of the body, with the editor's HTML removed."""
+    @property
+    def plain_text(self) -> str:
+        """The body with the editor's HTML removed, for excerpts and counting."""
         # Block boundaries have to become whitespace first, or the end of one
         # paragraph runs into the start of the next: "...twice.What I got...".
         # Inline tags are left to strip_tags so "<strong>word</strong>," does
         # not gain a space before the comma.
         text = BLOCK_BOUNDARY_RE.sub(" ", self.content or "")
         text = strip_tags(text).replace("&nbsp;", " ")
-        text = WHITESPACE_RE.sub(" ", text).strip()
-        return Truncator(text).chars(EXCERPT_LENGTH, truncate="…")
+        return WHITESPACE_RE.sub(" ", text).strip()
+
+    @property
+    def word_count(self) -> int:
+        text = self.plain_text
+        return len(text.split()) if text else 0
+
+    @property
+    def read_time_minutes(self) -> int:
+        """
+        Minutes, rounded up, never zero.
+
+        A two-line post is "1 min read" rather than "0 min read", which reads
+        as an error rather than as a very short post.
+        """
+        return max(1, ceil(self.word_count / READING_WORDS_PER_MINUTE))
+
+    def _build_excerpt(self) -> str:
+        """First couple of sentences of the body, with the editor's HTML removed."""
+        return Truncator(self.plain_text).chars(EXCERPT_LENGTH, truncate="…")
 
     def save(self, *args, **kwargs):
         touched = []

@@ -1,13 +1,28 @@
 # Postly — frontend
 
 Next.js (App Router) + TypeScript, Tailwind CSS v4, shadcn/ui and Framer
-Motion. Three surfaces:
+Motion. Two independent products, served from one app:
+
+**Postly itself** — everything under `src/app/(app)/`:
 
 - **`/`** — the marketing homepage
 - **`/login`, `/signup`, `/verify-email`, `/forgot-password`,
   `/reset-password/[token]`, `/onboarding`** — the account flows
-- **`/dashboard`** — the writing dashboard, behind a login, backed by the
-  Django API in [`postly-backend/`](postly-backend/README.md)
+- **`/dashboard`**, **`/dashboard/posts/[id]`**, **`/dashboard/settings`** —
+  the writing dashboard, behind a login, backed by the Django API in
+  [`postly-backend/`](postly-backend/README.md)
+
+**Published blogs** — `src/app/[siteSlug]/`:
+
+- **`/{siteSlug}`** — a writer's blog index
+- **`/{siteSlug}/{postSlug}`** — one published post
+
+The second is not a section of the first. It has no Postly navbar, no dashboard
+chrome, no login, and no `AuthProvider` — which is why the product lives in an
+`(app)` route group rather than at the root. A route group adds no path
+segment, so every URL above is exactly where it looks like it is; what it buys
+is a layout boundary, so a stranger reading somebody's blog does not have their
+browser asking the Postly API about a session they do not have.
 
 ```bash
 npm install
@@ -17,15 +32,59 @@ npm run build
 npm run lint
 ```
 
-The dashboard needs the Django API running on `:8000` as well — see
-[postly-backend/README.md](postly-backend/README.md) for that half. Its setup
-is `pip install -r requirements.txt`, `migrate`, `seed_demo_site`, `runserver`.
+Both halves need to be running — see
+[postly-backend/README.md](postly-backend/README.md) for the Django side. Its
+setup is `pip install -r requirements.txt`, `migrate`, `seed_sagar`,
+`runserver`.
 
-Then sign up at <http://localhost:3000/signup>. Email verification is
-mandatory, and in development the confirmation link prints to the terminal
-running `runserver` rather than being sent — the backend README has the
-details. `seed_demo_site` creates a pre-verified `demo@postly.test` /
-`small-hours-demo` if you would rather skip that.
+## Seeing the seeded blog
+
+`python manage.py seed_sagar` in `postly-backend/` creates a writer with ten
+posts — eight published, two drafts. With both servers up:
+
+| | |
+| --- | --- |
+| The public blog | <http://localhost:3000/sagar> |
+| One post | <http://localhost:3000/sagar/three-weeks-in-spiti-valley> |
+| A draft's URL (404s — this is the point) | <http://localhost:3000/sagar/on-leaving-a-job-without-a-plan> |
+| The dashboard | <http://localhost:3000/login> as `sagar@example.com` / `postly1234` |
+
+Open the public blog in a private window to see it the way a reader does: it
+loads with no session, and nothing on it asks for one.
+
+For more volume, `python manage.py seed_dummy_posts` adds ten numbered filler
+posts on top (`--count 15` puts the blog over the 20-per-page boundary, so the
+paginated fetches on both surfaces actually run more than once; `--delete`
+removes them again). They are titled `Dummy Post NN` and open "Lorem ipsum", so
+they never get mistaken for the curated ten.
+
+If you would rather start from nothing, sign up at
+<http://localhost:3000/signup> instead. Email verification is mandatory, and in
+development the confirmation link prints to the terminal running `runserver`
+rather than being sent.
+
+## Testing subdomains locally
+
+Blogs are served at `/{siteSlug}` today and will move to
+`{siteSlug}.postly.com` in Phase 3. You do not need to touch `/etc/hosts` to
+work on that: **`lvh.me` and every subdomain of it resolve to `127.0.0.1`**, so
+<http://sagar.lvh.me:3000> reaches your dev server with `sagar.lvh.me` in the
+`Host` header — which is the only input the subdomain routing will need.
+
+Add the host to the Django side before trying it, or the API refuses the
+request:
+
+```bash
+# postly-backend/.env
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,.lvh.me
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://sagar.lvh.me:3000
+```
+
+Until the routing layer exists, `sagar.lvh.me:3000/sagar` is what serves the
+blog — the host is ignored and the path still carries the slug. Making the host
+carry it is a rewrite in `middleware.ts` mapping `{slug}.postly.com/x` onto
+`/{slug}/x`, and nothing under `src/app/[siteSlug]/` changes: every file there
+takes `siteSlug` as a parameter and hands it straight to `lib/public-api.ts`.
 
 ## Design system
 
@@ -46,33 +105,60 @@ Three custom shadow utilities (`shadow-soft`, `shadow-lift`, `shadow-window`)
 re-declare Tailwind's ring layers before their own values, because setting
 `box-shadow` outright would silently erase any `ring-*` on the same element.
 
+Stored post HTML is rendered with `@tailwindcss/typography` as
+`prose prose-postly`, on the published post and inside the dashboard card
+alike. `.prose-postly` swaps the plugin's grey scale for the palette tokens
+above, which already flip in dark mode — so there is no `prose-invert` to
+remember. Its selector is `.prose.prose-postly`, inside `@layer utilities`, and
+both halves of that are load-bearing: the plugin declares the same variables on
+`.prose` as a utility, a later cascade layer beats an earlier one whatever the
+specificity, and within one layer the doubled class wins the tie. Put those
+rules in `@layer components` with a single class and the text silently comes
+out in the plugin's greys.
+
 ## Structure
 
 ```
 src/
   middleware.ts           route guard for /dashboard, /login, /signup
   app/
-    layout.tsx            fonts, metadata, theme + auth providers, no-JS fallback
-    page.tsx              homepage — composes the nine sections in order
-    globals.css           palette, type scale, custom utilities, editor prose
-    login/ signup/ verify-email/ forgot-password/
-    reset-password/[token]/ onboarding/
+    layout.tsx            document shell: fonts, theme, no-JS fallback.
+                          Deliberately no AuthProvider — see (app)/layout.tsx
+    globals.css           palette, type scale, utilities, editor + post prose
+    favicon.ico
+
+    (app)/                Postly itself. The route group adds no URL segment.
+      layout.tsx          AuthProvider — the boundary the blog sits outside of
+      page.tsx            homepage — composes the nine sections in order
+      login/ signup/ verify-email/ forgot-password/
+      reset-password/[token]/ onboarding/
                           one server page each, rendering a client form
-    dashboard/
-      page.tsx            post list
-      posts/[id]/page.tsx editor (awaits `params`, then renders the client UI)
+      dashboard/
+        page.tsx          post list
+        posts/[id]/       editor (awaits `params`, then the client UI)
+        settings/         blog name and description, account details
+
+    [siteSlug]/           published blogs — server-rendered, no auth, no chrome
+      layout.tsx          masthead + footer; 404s an unknown blog
+      page.tsx            the index: description and every published post
+      [postSlug]/page.tsx one post, with generateMetadata + Open Graph
+      not-found.tsx       one page for "no such blog", "no such post", "draft"
+
   components/
     auth-provider.tsx     user, loading, login/logout/signup, 401 handling
     auth/                 auth-shell, field, and one component per page
     site/                 navbar, hero, how-it-works, features, social-proof,
                           examples, pricing, cta-banner, footer, primitives
-    dashboard/            dashboard-header, account-menu, post-list,
-                          post-editor, editor-toolbar
+    dashboard/            dashboard-header, account-menu, site-link-chip,
+                          post-list, post-card, post-toolbar, post-editor,
+                          editor-toolbar, settings-panel
+    public/               reading-column, blog-header, blog-footer
     mockups/              browser-frame.tsx + screens.tsx
     motion/reveal.tsx     Reveal / Stagger / StaggerItem
   lib/
     content.ts            all homepage copy and data
-    api.ts                typed client for the Django API
+    api.ts                typed client for the private API — session + CSRF
+    public-api.ts         typed client for /api/public — no session, no cookies
     form-errors.ts        DRF error bodies → per-field messages
 ```
 
@@ -141,10 +227,33 @@ answering the first bounces a signed-out visitor between `/login` and
 
 ## Dashboard
 
-`/dashboard` lists posts; `/dashboard/posts/[id]` is the editor. Both are
-client components — this is a logged-in surface, so there is no SEO argument
-for server rendering, and the editor needs browser APIs anyway. An account
-with no blog yet is sent to `/onboarding`.
+`/dashboard` lists posts, `/dashboard/posts/[id]` is the editor, and
+`/dashboard/settings` is the blog's name and description. All three are client
+components — this is a logged-in surface, so there is no SEO argument for
+server rendering, and the editor needs browser APIs anyway. An account with no
+blog yet is sent to `/onboarding`.
+
+**The post list is cards, not a table.** A table is for comparing rows on a
+shared axis; a writer scanning their own posts is trying to recognise one, and
+what they recognise it by is how it starts. So each card carries the state, the
+date (or "last edited *n* minutes ago" for a draft), a read time, and three
+lines of the actual prose — and expands in place, rather than navigating, to
+show the whole post rendered with the same typography a reader gets. Skimming
+eight posts for the one you half remember should not mean loading and leaving
+eight pages.
+
+**Filter, sort and search all run in the browser.** The API already returned
+the whole set to draw the cards, so filtering it is an array operation and the
+list reacts on the keystroke. Search covers body text, not just titles — it is
+the body you remember when you cannot remember the title.
+
+**`site-link-chip.tsx` is the one place a writer's own address appears.** Not
+the marketing navbar, not the footer, not the account menu: a visitor to
+postly.com is being sold a product, and somebody's personal URL has no business
+there. The chip shows `sagar.postly.com`, which is where the blog will live,
+and both "Copy link" and "View live" use `/sagar`, which is where it lives
+today — the button's job is to hand over a link that opens. Phase 3 collapses
+the two into one string.
 
 **`src/lib/api.ts`** is the only place that talks to Django. It reads
 `NEXT_PUBLIC_API_URL`, throws a typed `ApiError` carrying DRF's field-level
@@ -166,6 +275,36 @@ lives in its `request()` helper and nowhere else.
 keystroke replaces the pending timer. Publishing sends the pending edits in the
 same request, so it can never capture a stale body. A `beforeunload` guard
 catches a tab closed mid-edit.
+
+## The public blog
+
+`/{siteSlug}` and `/{siteSlug}/{postSlug}` are Server Components. A reader gets
+HTML on the first byte, a crawler gets the whole article without running any
+JavaScript, and `generateMetadata` supplies per-post title, description and
+Open Graph tags. Pages are cached and revalidated every 60 seconds, so an edit
+in the dashboard is live within the minute without a rebuild.
+
+There is no `generateStaticParams` for `siteSlug`: that would need a list of
+every blog on Postly, and no public endpoint hands one out — it would be a
+directory of every customer. Post slugs *are* pre-rendered, per blog, once
+Next has seen that blog.
+
+**`src/lib/public-api.ts` is the seam Phase 3 turns on.** Every function there
+takes a site slug as its first argument and nothing in the file knows where
+that slug came from. Today the URL path supplies it; tomorrow the `Host` header
+will. See [Testing subdomains locally](#testing-subdomains-locally).
+
+The design is one 680px column — roughly 70 characters at the reading size —
+serif body at 19px, and generous leading. Postly appears exactly once, as a
+"Published with Postly" credit in the footer.
+
+**Post bodies are rendered with `dangerouslySetInnerHTML`, and that is safe
+because of what happens on the server**, not because of anything here: the
+public API cleans every body against an allowlist on its way out
+(`postly-backend/blog/sanitize.py`). Until each blog has its own subdomain, a
+published blog shares an origin with the dashboard, so an unsanitised
+`<script>` in somebody's post would run with a reading writer's session behind
+it.
 
 ## Notes
 

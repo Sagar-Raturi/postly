@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { LogOut, Settings } from "lucide-react";
+import { ChevronDown, LogOut, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,14 @@ function initials(name: string): string {
   return words.map((word) => word[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
+/**
+ * Who is signed in, and the two things they can do about it.
+ *
+ * The name is shown next to the avatar rather than hidden behind it — on a
+ * product where every post carries a byline, it is worth being able to see
+ * at a glance which account you are writing as. It folds away below `sm`,
+ * where the avatar carries the identity on its own.
+ */
 export function AccountMenu() {
   const { user, logout } = useAuth();
   const [signingOut, setSigningOut] = React.useState(false);
@@ -40,17 +48,23 @@ export function AccountMenu() {
         render={
           <Button
             variant="ghost"
-            size="icon-lg"
-            className="rounded-full"
-            aria-label="Account"
+            className="h-10 gap-2 rounded-full pr-2 pl-1.5"
+            aria-label={`Account — ${user.display_name}`}
           />
         }
       >
         <Avatar className="size-7">
-          <AvatarFallback className="text-[0.7rem] font-medium">
+          <AvatarFallback className="bg-brand/12 text-[0.7rem] font-medium text-brand">
             {initials(user.display_name)}
           </AvatarFallback>
         </Avatar>
+        <span className="max-w-36 truncate text-[0.85rem] font-medium max-sm:hidden">
+          {user.display_name}
+        </span>
+        <ChevronDown
+          aria-hidden
+          className="size-3.5 text-muted-foreground max-sm:hidden"
+        />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-56">
@@ -68,9 +82,9 @@ export function AccountMenu() {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem render={<Link href="/dashboard" />}>
+        <DropdownMenuItem render={<Link href="/dashboard/settings" />}>
           <Settings aria-hidden />
-          Dashboard
+          Settings
         </DropdownMenuItem>
 
         <DropdownMenuItem onClick={handleLogout} disabled={signingOut}>

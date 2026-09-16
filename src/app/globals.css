@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* `prose` for stored post HTML — the dashboard's inline expander and
+   every published post page. Themed by `.prose-postly` further down. */
+@plugin "@tailwindcss/typography";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -320,5 +324,87 @@
     height: 0;
     pointer-events: none;
     color: color-mix(in oklch, var(--muted-foreground), transparent 45%);
+  }
+}
+
+/* ---------------------------------------------------------------
+   Published post styles.
+
+   `prose prose-postly` renders the HTML a writer stored — on their
+   public blog, and inside the dashboard card when they expand one.
+   Both surfaces show the same markup, so both use this.
+
+   The typography plugin ships its own grey scale; this replaces it
+   with Postly's tokens, which already flip in dark mode, so there is
+   no `prose-invert` to remember. Size and measure are left to the
+   caller: the blog reads at 19px, the dashboard a little tighter.
+---------------------------------------------------------------- */
+@layer utilities {
+  /* Two things about this selector are load-bearing.
+
+     The layer: the typography plugin emits `prose` as a utility, and a
+     later cascade layer beats an earlier one whatever the specificity — so
+     the same rules in `components` lose outright and the text comes out in
+     the plugin's greys.
+
+     The doubled class: inside one layer specificity decides again, and
+     `.prose.prose-postly` (two classes) beats the plugin's `.prose` (one). */
+  .prose.prose-postly {
+    --tw-prose-body: var(--foreground);
+    --tw-prose-headings: var(--foreground);
+    --tw-prose-lead: var(--muted-foreground);
+    --tw-prose-links: var(--brand);
+    --tw-prose-bold: var(--foreground);
+    --tw-prose-counters: var(--muted-foreground);
+    --tw-prose-bullets: color-mix(in oklch, var(--muted-foreground), transparent 45%);
+    --tw-prose-hr: var(--border);
+    --tw-prose-quotes: var(--muted-foreground);
+    --tw-prose-quote-borders: var(--brand);
+    --tw-prose-captions: var(--muted-foreground);
+    --tw-prose-code: var(--foreground);
+    --tw-prose-pre-code: var(--foreground);
+    --tw-prose-pre-bg: var(--muted);
+    --tw-prose-th-borders: var(--border);
+    --tw-prose-td-borders: var(--border);
+  }
+
+  /* Headings stay on the display serif even where the body is sans —
+     the dashboard card — so a post looks like itself in both places. */
+  .prose-postly :is(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .prose-postly blockquote {
+    border-left-width: 2px;
+    font-style: italic;
+    font-weight: 400;
+  }
+  /* The plugin adds curly quotes around the first and last paragraph of a
+     blockquote. With a serif body they read as stray punctuation. */
+  .prose-postly blockquote p:first-of-type::before,
+  .prose-postly blockquote p:last-of-type::after {
+    content: none;
+  }
+
+  .prose-postly a {
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .prose-postly code::before,
+  .prose-postly code::after {
+    content: none;
+  }
+  .prose-postly :not(pre) > code {
+    background: var(--muted);
+    border-radius: calc(var(--radius) * 0.4);
+    padding: 0.15em 0.35em;
+    font-weight: 400;
+  }
+
+  .prose-postly img {
+    border-radius: var(--radius);
   }
 }
