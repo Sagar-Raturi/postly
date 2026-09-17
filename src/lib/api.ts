@@ -31,6 +31,7 @@ export interface User {
   id: number;
   email: string;
   display_name: string;
+<<<<<<< HEAD
 
   /** The "About" paragraph on the public blog. Up to 300 characters. */
   bio: string;
@@ -45,6 +46,11 @@ export interface User {
    */
   show_email_publicly: boolean;
 
+=======
+  /** Absolute URL of the writer's picture, or null for the initials
+   *  fallback. Written only by the avatar endpoints below. */
+  avatar: string | null;
+>>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
   date_joined: string;
 }
 
@@ -192,8 +198,17 @@ function readCookie(name: string): string | null {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
+
+  // FormData has to set its own Content-Type. The header for a multipart
+  // body carries the boundary string that separates the parts, and only the
+  // browser knows what boundary it picked — declaring "multipart/form-data"
+  // by hand, or leaving the JSON default in place, produces a body Django
+  // cannot parse and a 400 with nothing useful in it.
+  const isFormData =
+    typeof FormData !== "undefined" && init.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? null : { "Content-Type": "application/json" }),
     ...(init.headers as Record<string, string> | undefined),
   };
 
@@ -377,6 +392,46 @@ export function confirmPasswordReset(data: {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+/* ------------------------------------------------------------------ *
+ * Avatars
+ * ------------------------------------------------------------------ */
+
+/**
+ * The largest file worth sending, mirroring MAX_UPLOAD_BYTES in
+ * accounts/avatars.py.
+ *
+ * Checked here as well as there so a writer who picked a 30MB RAW export is
+ * told immediately, rather than after uploading it on a phone connection.
+ * The server-side check is the one that counts — this one is a courtesy and
+ * can be bypassed by anyone who cares to.
+ */
+export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+
+/** What the file picker offers, matching ALLOWED_CONTENT_TYPES. */
+export const ACCEPTED_AVATAR_TYPES = "image/jpeg,image/png,image/webp";
+
+/**
+ * Uploads a new picture for the signed-in writer.
+ *
+ * Multipart, not JSON: this is the one call in the file that sends a file.
+ * The backend re-encodes whatever arrives — see accounts/avatars.py — so
+ * what comes back is a URL for a square thumbnail, not for `file`.
+ *
+ * Returns the whole account, so the caller can hand it straight to the auth
+ * state rather than re-fetching.
+ */
+export function uploadAvatar(file: File): Promise<User> {
+  const body = new FormData();
+  body.append("avatar", file);
+
+  return request<User>("/auth/user/avatar/", { method: "POST", body });
+}
+
+/** Removes the picture, falling the writer back to their initials. */
+export function removeAvatar(): Promise<User> {
+  return request<User>("/auth/user/avatar/", { method: "DELETE" });
 }
 
 /* ------------------------------------------------------------------ *

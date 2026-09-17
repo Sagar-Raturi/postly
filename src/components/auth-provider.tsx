@@ -22,6 +22,14 @@ type AuthContextValue = {
   signup: (data: SignupInput) => Promise<void>;
   /** Re-read the account, after a display-name change for instance. */
   refresh: () => Promise<void>;
+  /**
+   * Replace the account with one the API just handed back.
+   *
+   * For endpoints that answer with the whole user — the avatar ones do —
+   * so the header updates on the same tick as the form, without a second
+   * round trip to be told what we were already told.
+   */
+  applyUser: (user: User) => void;
 };
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
@@ -101,9 +109,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(await getCurrentUser().catch(() => null));
   }, []);
 
+  const applyUser = React.useCallback((account: User) => setUser(account), []);
+
   const value = React.useMemo(
-    () => ({ user, loading, login, logout, signup, refresh }),
-    [user, loading, login, logout, signup, refresh],
+    () => ({ user, loading, login, logout, signup, refresh, applyUser }),
+    [user, loading, login, logout, signup, refresh, applyUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

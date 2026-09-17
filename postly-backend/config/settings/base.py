@@ -191,6 +191,9 @@ REST_FRAMEWORK = {
         # Everything dj-rest-auth registers that we did not subclass
         # (logout, password change, user details).
         "dj_rest_auth": "60/min",
+        # Avatar uploads. Tight because each one costs a decode and a
+        # resize, and nobody changes their picture thirty times an hour.
+        "avatar": "30/hour",
     },
 }
 

@@ -48,6 +48,11 @@ class PublicSiteSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(source="owner.avatar", read_only=True)
     email = serializers.EmailField(source="owner.email", read_only=True)
 
+    # A picture the writer chose in order to publish it, so it belongs on
+    # the public surface in a way an email address never would. Null when
+    # they have not set one, which the blog renders as initials.
+    author_avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = Site
         fields = [
@@ -55,10 +60,15 @@ class PublicSiteSerializer(serializers.ModelSerializer):
             "slug",
             "tagline",
             "description",
+<<<<<<< HEAD
             "display_name",
             "bio",
             "avatar",
             "email",
+=======
+            "author",
+            "author_avatar",
+>>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
             "theme",
             "appearance",
             "font_pairing",
@@ -66,6 +76,7 @@ class PublicSiteSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+<<<<<<< HEAD
     def to_representation(self, instance: Site) -> dict:
         """
         Drop `email` entirely unless the owner published it.
@@ -91,6 +102,20 @@ class PublicSiteSerializer(serializers.ModelSerializer):
             data.pop("email", None)
 
         return data
+=======
+    def get_author_avatar(self, obj: Site) -> str | None:
+        """
+        An absolute URL, because the reader's page is served by Next.js on
+        a different origin to the media files. A relative "/media/..." here
+        would resolve against the blog's own host and 404.
+        """
+        avatar = obj.owner.avatar if obj.owner_id else None
+        if not avatar:
+            return None
+
+        request = self.context.get("request")
+        return request.build_absolute_uri(avatar.url) if request else avatar.url
+>>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
 
 
 class PublicPostListSerializer(serializers.ModelSerializer):

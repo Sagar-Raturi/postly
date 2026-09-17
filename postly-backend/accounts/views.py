@@ -28,9 +28,12 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_GET
 from rest_framework import serializers, status
 from rest_framework.generics import CreateAPIView
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from .serializers import AvatarSerializer, UserSerializer
 
 # Deliberately covers three cases in one sentence. allauth's HMAC keys carry
 # no server-side state and its lookup filters on verified=False, so a link
@@ -165,6 +168,46 @@ class VerifyEmailView(APIView):
             return EmailConfirmation.objects.get(key=key.lower())
         except (EmailConfirmation.DoesNotExist, EmailAddress.DoesNotExist):
             return None
+
+
+class AvatarView(APIView):
+    """
+    POST /api/auth/user/avatar/ — set the signed-in writer's picture.
+    DELETE /api/auth/user/avatar/ — remove it.
+
+    Separate from the user-details endpoint, which speaks JSON and cannot
+    carry a file, and separate from a `PATCH` with a null field, which is a
+    confusing way to spell "delete this". Both verbs answer with the whole
+    account, the same shape `GET /api/auth/user/` returns, so the frontend
+    can drop the response straight into its auth state.
+
+    There is no user id in the path and none is accepted in the body: the
+    only account this view can touch is `request.user`. That is what makes
+    "a writer can only change their own avatar" a property of the URL rather
+    than a permission check someone could forget to write.
+    """
+
+    parser_classes = [MultiPartParser, FormParser]
+    throttle_scope = "avatar"
+
+    def post(self, request):
+        serializer = AvatarSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        return Response(UserSerializer(user, context={"request": request}).data)
+
+    def delete(self, request):
+        user = request.user
+
+        if user.avatar:
+            # Drops the file as well as the column, so removing a picture
+            # actually unpublishes it rather than just unlinking it.
+            user.avatar.delete(save=True)
+
+        # 200 with the account, not 204: the client needs the new state, and
+        # a bare 204 would make it guess.
+        return Response(UserSerializer(user, context={"request": request}).data)
 
 
 @require_GET

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Container } from "@/components/site/primitives";
+import { AvatarField } from "@/components/dashboard/avatar-field";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { SiteLinkChip } from "@/components/dashboard/site-link-chip";
 import { ThemePicker } from "@/components/dashboard/theme-picker";
@@ -324,6 +325,17 @@ export function SettingsPanel() {
               </section>
 
               <PublicProfileSection />
+
+              <section className="rounded-2xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
+                <h2 className="font-display text-xl">Your public profile</h2>
+                <p className="mt-1 text-[0.875rem] text-muted-foreground">
+                  How you appear to readers, next to your name on your blog.
+                </p>
+
+                <div className="mt-6">
+                  <AvatarField />
+                </div>
+              </section>
 
               <section className="rounded-2xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
                 <h2 className="font-display text-xl">Your account</h2>

@@ -6,9 +6,24 @@ Postly identifies people by email address: there is no username field, and
 history, so it exists from the first migration — see MIGRATION.md.
 """
 
+import uuid
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+
+
+def avatar_path(instance, filename: str) -> str:
+    """
+    Where an uploaded avatar lands.
+
+    The name the browser sent is thrown away rather than slugified. It is
+    attacker-controlled, it is sometimes revealing ("passport-photo.jpg"),
+    and it is never useful — the file is re-encoded on the way in, so the
+    only part worth keeping is the extension the re-encoder chose.
+    """
+    suffix = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    return f"avatars/{uuid.uuid4().hex}.{suffix}"
 
 
 class UserManager(BaseUserManager):
@@ -61,6 +76,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text="Shown as the author on published posts.",
     )
 
+<<<<<<< HEAD
     # --- The public profile -------------------------------------------------
     # These three are the profile panel on a published blog. They describe
     # the writer to a stranger, so each one is either opt-in or harmless:
@@ -85,6 +101,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text="Whether the public blog shows this address. Off by "
         "default: publishing an address is a decision, not a side effect of "
         "having one.",
+=======
+    avatar = models.ImageField(
+        upload_to=avatar_path,
+        null=True,
+        blank=True,
+        help_text="Shown next to the byline on the writer's public blog.",
+>>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
     )
 
     is_active = models.BooleanField(
