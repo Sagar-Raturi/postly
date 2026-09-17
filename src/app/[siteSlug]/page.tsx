@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-<<<<<<< HEAD
 import { BlogShell } from "@/components/public/blog-shell";
 import { PostFeed } from "@/components/public/post-feed";
-=======
-import { ProfilePanel } from "@/components/public/profile-panel";
-import { ReadingColumn } from "@/components/public/reading-column";
->>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
 import {
   getPublicSite,
   listPublicPosts,
@@ -78,33 +73,12 @@ export default async function BlogIndexPage({
   const visible = year ? postsInYear(posts, year) : posts;
 
   return (
-<<<<<<< HEAD
     <BlogShell site={site} posts={posts} activeYear={year}>
       {site.description ? (
         <p className="mb-12 max-w-[68ch] text-[19px] leading-[1.65] text-pretty text-foreground">
           {site.description}
         </p>
       ) : null}
-=======
-    <ReadingColumn className="py-14 sm:py-20">
-      <header>
-        <h1 className="font-blog-heading text-[2rem] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[2.6rem]">
-          {site.name}
-        </h1>
-        {site.description ? (
-          <p className="mt-4 text-[1.125rem] leading-[1.65] text-pretty text-muted-foreground sm:text-[1.1875rem]">
-            {site.description}
-          </p>
-        ) : null}
-
-        {/* Below the description rather than above the title: the blog is
-            the thing a reader arrived for, and the person writing it is the
-            answer to the question they ask second. */}
-        <div className="mt-6">
-          <ProfilePanel name={site.author} avatar={site.author_avatar} />
-        </div>
-      </header>
->>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
 
       {year ? (
         <div className="mb-12 flex flex-wrap items-baseline gap-x-4 gap-y-2 border-b border-border/70 pb-6">

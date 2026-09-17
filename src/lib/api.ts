@@ -31,11 +31,14 @@ export interface User {
   id: number;
   email: string;
   display_name: string;
-<<<<<<< HEAD
 
   /** The "About" paragraph on the public blog. Up to 300 characters. */
   bio: string;
-  /** An absolute URL, or null. Read-only: there is no upload endpoint yet. */
+  /**
+   * Absolute URL of the writer's picture, or null for the initials
+   * fallback. Read-only on this endpoint — written only by the avatar
+   * endpoints below, because a file cannot travel in a JSON body.
+   */
   avatar: string | null;
   /**
    * Whether the public blog publishes `email`.
@@ -46,11 +49,6 @@ export interface User {
    */
   show_email_publicly: boolean;
 
-=======
-  /** Absolute URL of the writer's picture, or null for the initials
-   *  fallback. Written only by the avatar endpoints below. */
-  avatar: string | null;
->>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
   date_joined: string;
 }
 

@@ -60,11 +60,16 @@ export interface PublicSite {
    * ------------------------------------------------------------------ */
 
   /** The writer's display name. */
-<<<<<<< HEAD
   display_name: string;
   /** The "About" paragraph. May be empty — the panel omits the section. */
   bio: string;
-  /** An absolute URL, or null: the panel draws an initials circle instead. */
+  /**
+   * An absolute URL, or null: the panel draws an initials circle instead.
+   *
+   * Absolute because the media files are served by the API's origin, not by
+   * the Next.js server rendering this page — a relative "/media/..." would
+   * resolve against the blog's own host and 404.
+   */
   avatar: string | null;
 
   /**
@@ -77,17 +82,6 @@ export interface PublicSite {
    * absent — see PublicSiteSerializer.to_representation on the backend.
    */
   email?: string;
-=======
-  author: string;
-  /**
-   * Absolute URL of the writer's picture, or null.
-   *
-   * Absolute because the media files are served by the API's origin, not by
-   * the Next.js server rendering this page — see the serializer for the
-   * bug a relative URL causes here.
-   */
-  author_avatar: string | null;
->>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
 
   /**
    * How the writer chose to have their blog drawn.
