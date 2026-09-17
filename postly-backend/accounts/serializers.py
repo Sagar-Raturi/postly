@@ -93,7 +93,6 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-<<<<<<< HEAD
         fields = [
             "id",
             "email",
@@ -106,20 +105,11 @@ class UserSerializer(serializers.ModelSerializer):
         # Changing an address means re-verifying it, which is a flow of its
         # own; this endpoint only renames.
         #
-        # `avatar` is read-only here because there is no upload endpoint
-        # yet: the column and the public serializer are ready for one, and
-        # until it exists the only way a picture arrives is the admin. A
-        # writer with no avatar gets the initials circle, which is the
-        # designed state rather than a gap.
-=======
-        fields = ["id", "email", "display_name", "avatar", "date_joined"]
-        # Changing an address means re-verifying it, which is a flow of its
-        # own; this endpoint only renames.
-        #
         # `avatar` is read-only *here* because a file cannot travel in the
         # JSON body this endpoint takes. It is written by AvatarView, which
         # returns this same serializer so the client has one shape to read.
->>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
+        # A writer with no avatar gets the initials circle, which is the
+        # designed state rather than a gap.
         read_only_fields = ["id", "email", "avatar", "date_joined"]
 
     def validate_display_name(self, value: str) -> str:

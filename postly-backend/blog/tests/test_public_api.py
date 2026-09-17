@@ -136,17 +136,11 @@ class TestNothingPrivateLeaks:
             "slug",
             "tagline",
             "description",
-<<<<<<< HEAD
             # The profile panel. Published on purpose — these fields exist
             # to be read by strangers.
             "display_name",
             "bio",
             "avatar",
-=======
-            "author",
-            # A picture the writer chose in order to publish it.
-            "author_avatar",
->>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
             # The blog cannot render without these, and none of them is a
             # colour — see PublicSiteSerializer.
             "theme",
@@ -204,7 +198,6 @@ class TestNothingPrivateLeaks:
         assert body["content"] == published.content
 
 
-<<<<<<< HEAD
 class TestPublicEmailIsOptIn:
     """
     Whether a reader sees the writer's address is the writer's decision,
@@ -301,8 +294,9 @@ class TestPublicProfile:
         assert body["bio"] == ""
         assert body["tagline"] == ""
         assert body["avatar"] is None
-=======
-class TestAuthorAvatar:
+
+
+class TestProfileAvatar:
     """
     The writer's picture, as a reader's browser has to receive it.
 
@@ -312,12 +306,12 @@ class TestAuthorAvatar:
     """
 
     def test_is_null_when_the_writer_has_not_set_one(self, api, site):
-        assert api.get(site_url(site.slug)).json()["author_avatar"] is None
+        assert api.get(site_url(site.slug)).json()["avatar"] is None
 
     def test_is_an_absolute_url_once_set(self, api, api_a, site):
         api_a.post("/api/auth/user/avatar/", {"avatar": portrait()}, format="multipart")
 
-        avatar = api.get(site_url(site.slug)).json()["author_avatar"]
+        avatar = api.get(site_url(site.slug)).json()["avatar"]
 
         assert avatar.startswith("http://")
         assert "/media/avatars/" in avatar
@@ -329,7 +323,7 @@ class TestAuthorAvatar:
         api_a.post("/api/auth/user/avatar/", {"avatar": portrait()}, format="multipart")
         user_a.refresh_from_db()
 
-        avatar = api.get(site_url(site.slug)).json()["author_avatar"]
+        avatar = api.get(site_url(site.slug)).json()["avatar"]
 
         assert avatar.endswith(user_a.avatar.name)
 
@@ -337,7 +331,7 @@ class TestAuthorAvatar:
         api_a.post("/api/auth/user/avatar/", {"avatar": portrait()}, format="multipart")
         api_a.delete("/api/auth/user/avatar/")
 
-        assert api.get(site_url(site.slug)).json()["author_avatar"] is None
+        assert api.get(site_url(site.slug)).json()["avatar"] is None
 
     def test_it_does_not_bring_the_account_with_it(self, api, api_a, site, user_a):
         """A picture is publishable; the account behind it still is not."""
@@ -349,9 +343,8 @@ class TestAuthorAvatar:
 
         # The filename is a random uuid rather than anything derived from
         # the account, so the URL is not a way to enumerate writers.
-        stem = body["author_avatar"].rsplit("/", 1)[-1].split(".")[0]
+        stem = body["avatar"].rsplit("/", 1)[-1].split(".")[0]
         assert re.fullmatch(r"[0-9a-f]{32}", stem)
->>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
 
 
 class TestTheming:

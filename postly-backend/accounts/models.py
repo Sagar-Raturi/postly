@@ -76,7 +76,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text="Shown as the author on published posts.",
     )
 
-<<<<<<< HEAD
     # --- The public profile -------------------------------------------------
     # These three are the profile panel on a published blog. They describe
     # the writer to a stranger, so each one is either opt-in or harmless:
@@ -90,7 +89,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         "public blog. Around 300 characters — it is a paragraph, not a page.",
     )
     avatar = models.ImageField(
-        upload_to="avatars/",
+        # A callable, not "avatars/": the browser's filename is discarded
+        # rather than stored. See avatar_path above, and accounts/avatars.py
+        # for the re-encoding the file goes through before it gets here.
+        upload_to=avatar_path,
         null=True,
         blank=True,
         help_text="Optional. The blog falls back to an initials circle in "
@@ -101,13 +103,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text="Whether the public blog shows this address. Off by "
         "default: publishing an address is a decision, not a side effect of "
         "having one.",
-=======
-    avatar = models.ImageField(
-        upload_to=avatar_path,
-        null=True,
-        blank=True,
-        help_text="Shown next to the byline on the writer's public blog.",
->>>>>>> 1662c3881b9186d973c38f16b599854d5f047c68
     )
 
     is_active = models.BooleanField(
