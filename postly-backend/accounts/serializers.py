@@ -17,6 +17,8 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
+from . import avatars
+
 User = get_user_model()
 
 
@@ -91,16 +93,50 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "display_name", "date_joined"]
+        fields = ["id", "email", "display_name", "avatar", "date_joined"]
         # Changing an address means re-verifying it, which is a flow of its
         # own; this endpoint only renames.
-        read_only_fields = ["id", "email", "date_joined"]
+        #
+        # `avatar` is read-only *here* because a file cannot travel in the
+        # JSON body this endpoint takes. It is written by AvatarView, which
+        # returns this same serializer so the client has one shape to read.
+        read_only_fields = ["id", "email", "avatar", "date_joined"]
 
     def validate_display_name(self, value: str) -> str:
         value = value.strip()
         if not value:
             raise serializers.ValidationError("Tell us what to call you.")
         return value
+
+
+class AvatarSerializer(serializers.Serializer):
+    """
+    The body of POST /api/auth/user/avatar/.
+
+    Deliberately not a ModelSerializer. DRF's ImageField would run Django's
+    own `validate_image_file_extension`, which trusts the filename, and then
+    store the caller's bytes verbatim. What is wanted instead is the
+    re-encode in avatars.py, so the raw upload is taken as an opaque
+    FileField and that module decides whether it is an image at all.
+    """
+
+    avatar = serializers.FileField(write_only=True)
+
+    def validate_avatar(self, upload):
+        return avatars.process(upload)
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+
+        # Replacing an avatar should not leave the old file on disk
+        # forever. `save=False` because assigning the new one below is what
+        # writes the row.
+        if user.avatar:
+            user.avatar.delete(save=False)
+
+        processed = self.validated_data["avatar"]
+        user.avatar.save(processed.name, processed, save=True)
+        return user
 
 
 class PasswordResetSerializer(serializers.Serializer):

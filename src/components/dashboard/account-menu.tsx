@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ChevronDown, LogOut, Settings } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,12 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-provider";
-
-/** First letters of the display name, for the avatar. */
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/).slice(0, 2);
-  return words.map((word) => word[0]?.toUpperCase() ?? "").join("") || "?";
-}
+import { initials } from "@/lib/initials";
 
 /**
  * Who is signed in, and the two things they can do about it.
@@ -54,6 +49,7 @@ export function AccountMenu() {
         }
       >
         <Avatar className="size-7">
+          {user.avatar ? <AvatarImage src={user.avatar} alt="" /> : null}
           <AvatarFallback className="bg-brand/12 text-[0.7rem] font-medium text-brand">
             {initials(user.display_name)}
           </AvatarFallback>

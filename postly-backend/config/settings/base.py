@@ -150,8 +150,15 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Post images land here for now. TODO Phase 2+: swap for S3 via django-storages.
-MEDIA_URL = "media/"
+# Post images and avatars land here for now.
+# TODO Phase 2+: swap for S3 via django-storages.
+#
+# The leading slash is load-bearing. Without it, FileField.url returns a
+# path relative to whatever URL is being served ("media/avatars/x.jpg"), and
+# `request.build_absolute_uri` resolves it against the *endpoint's* path —
+# so the public API would hand readers
+# ".../api/public/sites/media/avatars/x.jpg".
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -186,6 +193,9 @@ REST_FRAMEWORK = {
         # Everything dj-rest-auth registers that we did not subclass
         # (logout, password change, user details).
         "dj_rest_auth": "60/min",
+        # Avatar uploads. Tight because each one costs a decode and a
+        # resize, and nobody changes their picture thirty times an hour.
+        "avatar": "30/hour",
     },
 }
 

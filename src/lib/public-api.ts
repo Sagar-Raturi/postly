@@ -53,6 +53,14 @@ export interface PublicSite {
   description: string;
   /** The writer's display name. */
   author: string;
+  /**
+   * Absolute URL of the writer's picture, or null.
+   *
+   * Absolute because the media files are served by the API's origin, not by
+   * the Next.js server rendering this page — see the serializer for the
+   * bug a relative URL causes here.
+   */
+  author_avatar: string | null;
 
   /**
    * How the writer chose to have their blog drawn.
