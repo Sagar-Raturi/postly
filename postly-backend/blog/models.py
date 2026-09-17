@@ -67,6 +67,12 @@ class Site(models.Model):
         unique=True,
         help_text="Becomes the subdomain: <slug>.postly.com",
     )
+    tagline = models.CharField(
+        max_length=160,
+        blank=True,
+        help_text="One line under the blog's name in the masthead. A "
+        "subtitle, not a description — the long version is `description`.",
+    )
     description = models.TextField(blank=True)
 
     # --- Appearance ---------------------------------------------------------

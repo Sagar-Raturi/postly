@@ -271,7 +271,7 @@ a couple of minutes.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `GET` | `/api/public/sites/{slug}/` | name, slug, description, author display name, appearance |
+| `GET` | `/api/public/sites/{slug}/` | blog name, slug, tagline, description; the writer's display name, bio and avatar; appearance. `email` **only** if published |
 | `GET` | `/api/public/sites/{slug}/posts/` | published posts only, paginated, newest first |
 | `GET` | `/api/public/sites/{slug}/posts/{postSlug}/` | one published post, with its body |
 
@@ -283,8 +283,9 @@ What holds across all three:
   unpublished draft tells a reader nothing.
 - **The serializers are an allowlist, not an exclusion list.** They name the
   public fields explicitly, so a field added to the dashboard serializers later
-  cannot leak onto the public internet by default. There is no owner email, no
-  user id, no site id, no `status` and no `created_at`/`updated_at`.
+  cannot leak onto the public internet by default. There is no user id, no site
+  id, no `status` and no `created_at`/`updated_at`.
+- **The writer's email is opt-in, and the switch is enforced here.** See below.
 - **Nothing is client-filterable.** No `?status=`, no `?ordering=` — a reader
   choosing the ordering is not a feature, and `?status=draft` would be a way of
   asking for one.
@@ -304,6 +305,49 @@ What holds across all three:
   content is never rewritten and the editor gets its own markup back byte for
   byte.
 
+#### The public email address
+
+`User.show_email_publicly` is a `BooleanField` defaulting to `False`, and
+`PublicSiteSerializer.to_representation()` **pops the `email` key out of the
+response** unless it is on.
+
+Two decisions in that sentence, both load-bearing:
+
+**The address never leaves the server when the switch is off.** The obvious
+alternative is to serialize it always and let the blog decide what to render.
+That puts a private address in a public HTTP response and makes the frontend's
+discretion the only thing protecting it — at which point anyone with `curl`
+has the address, whatever the page draws.
+
+**The key is removed, not set to `null` or `""`.** A null email still says
+"this field exists and this writer has one hidden", and it invites a frontend
+to render an empty row or a "hidden" placeholder. An absent key has exactly one
+possible rendering, which is nothing at all. `"email" in response` and "this
+writer publishes their address" are the same question, and that is the point.
+
+The default is `False`, so a new account is private without anyone choosing it,
+and `seed_sagar` leaves it alone — the state a fresh install demonstrates first
+is the private one. Turning it on lives in the dashboard at
+**Settings → Your public profile**, and saves on the switch rather than behind
+a Save button.
+
+`blog/tests/test_public_api.py::TestPublicEmailIsOptIn` pins all of it: absent
+by default, present and correct when on, gone again on the next request when
+switched back off, per-account, and never on the post endpoints.
+
+#### The rest of the profile
+
+`display_name`, `bio` and `avatar` live on `User`, not `Site`: they describe a
+person, and a person with two blogs is the same person. `tagline` lives on
+`Site`, because it describes a publication. All four are always public — they
+exist for no other purpose than being read by strangers — and all four may be
+empty, which the blog renders as a fallback rather than a gap.
+
+`avatar` is an `ImageField` served from `MEDIA_URL`, and there is **no upload
+endpoint yet**: it is read-only on `PATCH /api/auth/user/`, and the only way a
+picture arrives today is the Django admin. A writer without one gets an
+initials circle in their blog's accent colour.
+
 ### Auth
 
 | Method | Path | Notes |
@@ -311,7 +355,7 @@ What holds across all three:
 | `POST` | `/api/auth/signup/` | `email`, `display_name`, `password1`, `password2` |
 | `POST` | `/api/auth/login/` | 204 plus a session cookie; no token in the body |
 | `POST` | `/api/auth/logout/` | `GET` is a 405 |
-| `GET` `PATCH` | `/api/auth/user/` | current account; `PATCH` renames only |
+| `GET` `PATCH` | `/api/auth/user/` | current account. `PATCH` writes `display_name`, `bio`, `show_email_publicly`; `email` and `avatar` are read-only |
 | `POST` | `/api/auth/password/reset/` | identical response for known and unknown addresses |
 | `POST` | `/api/auth/password/reset/confirm/` | `uid`, `token`, `new_password1`, `new_password2` |
 | `POST` | `/api/auth/password/change/` | requires `old_password` |

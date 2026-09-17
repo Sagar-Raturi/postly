@@ -27,8 +27,15 @@ EMAIL = "sagar@example.com"
 PASSWORD = "postly1234"
 DISPLAY_NAME = "Sagar Raturi"
 
+DISPLAY_BIO = (
+    "Backend engineer, occasional walker of long distances. I write about "
+    "the parts of software nobody puts in the changelog, and about whatever "
+    "the mountains taught me that month."
+)
+
 SITE_NAME = "Sagar Raturi"
 SITE_SLUG = "sagar"
+SITE_TAGLINE = "Software, mountains, and the long way round."
 SITE_DESCRIPTION = (
     "Notes on software, mountains, and the things I keep relearning."
 )
@@ -70,12 +77,26 @@ class Command(BaseCommand):
             f"\n  Public     /{site.slug}"
             f"\n  Phase 3    {site.domain}"
         )
+        self.stdout.write(
+            "\n  The public email address is off, which is the default. "
+            "Turn it on under\n  Settings / Your public profile to see it "
+            "in the blog's profile panel."
+        )
 
     # -- steps ---------------------------------------------------------------
 
     def _user(self) -> User:
         user, created = User.objects.get_or_create(
-            email=EMAIL, defaults={"display_name": DISPLAY_NAME}
+            email=EMAIL,
+            defaults={
+                "display_name": DISPLAY_NAME,
+                "bio": DISPLAY_BIO,
+                # Left at the model default deliberately. The address stays
+                # off the public blog until somebody goes and turns it on,
+                # so the state a fresh install demonstrates first is the
+                # private one — see PublicSiteSerializer.to_representation.
+                "show_email_publicly": False,
+            },
         )
         if created:
             # Only on creation: a re-run must not reset a password that has
@@ -85,6 +106,13 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Created user {EMAIL}"))
         else:
             self.stdout.write(f"User {EMAIL} already exists")
+
+        # Backfilled rather than overwritten: `bio` arrived after this
+        # command did, so a database seeded before the field existed has an
+        # empty one — while a bio somebody has since edited is theirs.
+        if not user.bio:
+            user.bio = DISPLAY_BIO
+            user.save(update_fields=["bio"])
 
         # Marked verified directly. ACCOUNT_EMAIL_VERIFICATION is mandatory,
         # so without this the account could be created but never logged into.
@@ -99,13 +127,25 @@ class Command(BaseCommand):
             defaults={
                 "owner": user,
                 "name": SITE_NAME,
+                "tagline": SITE_TAGLINE,
                 "description": SITE_DESCRIPTION,
+                # The demo blog follows the reader's system setting, so a
+                # fresh install shows both schemes without anyone going
+                # into Settings first. A real writer picks this for
+                # themselves — it is not the model's default.
+                "appearance": Site.Appearance.SYSTEM,
             },
         )
         if created:
             self.stdout.write(self.style.SUCCESS(f"Created site “{site.name}”"))
         else:
             self.stdout.write(f"Site “{site.name}” already exists")
+
+        # Same backfill reasoning as the bio above.
+        if not site.tagline:
+            site.tagline = SITE_TAGLINE
+            site.save(update_fields=["tagline"])
+
         return site
 
     def _posts(self, site: Site, user: User) -> int:

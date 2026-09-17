@@ -437,4 +437,96 @@
   [data-blog-theme] .prose.prose-postly :is(h1, h2, h3, h4) {
     font-family: var(--blog-heading);
   }
+
+  /* ---------------------------------------------------------------
+     .prose-blog — the published post body, at reading size.
+
+     `prose-postly` maps the palette onto the plugin's variables and is
+     shared with the dashboard's expanded card. This variant is the part
+     that is only true of a page somebody reads end to end: 19px at 1.7,
+     a paragraph gap of 1.5em, and images allowed out past the measure.
+
+     Three classes (`.prose.prose-postly.prose-blog`) so it beats both the
+     plugin's `.prose` and the shared variant within the same layer.
+  ----------------------------------------------------------------- */
+  .prose.prose-postly.prose-blog {
+    font-size: 19px;
+    line-height: 1.7;
+  }
+
+  .prose.prose-postly.prose-blog p {
+    margin-bottom: 1.5em;
+  }
+
+  /* The plugin sizes headings in `em`, which would scale them off the 19px
+     body and off the type scale. Pinned in px instead. */
+  .prose.prose-postly.prose-blog :is(h2, h3) {
+    margin-top: 48px;
+    margin-bottom: 16px;
+    line-height: 1.25;
+  }
+  .prose.prose-postly.prose-blog h2 {
+    font-size: 30px;
+  }
+  .prose.prose-postly.prose-blog h3 {
+    font-size: 22px;
+  }
+
+  .prose.prose-postly.prose-blog blockquote {
+    margin-block: 32px;
+    padding-left: 24px;
+    font-size: 19px;
+  }
+
+  .prose.prose-postly.prose-blog :is(ul, ol) {
+    margin-block: 24px;
+  }
+  .prose.prose-postly.prose-blog li {
+    margin-block: 8px;
+  }
+
+  .prose.prose-postly.prose-blog :not(pre) > code {
+    font-size: 0.875em;
+  }
+  .prose.prose-postly.prose-blog pre {
+    margin-block: 32px;
+    font-size: 15px;
+  }
+
+  .prose.prose-postly.prose-blog hr {
+    margin-block: 48px;
+  }
+
+  /* Images break the measure, on purpose.
+
+     The article is set to 720px because that is a comfortable line length,
+     but a photograph has no line length — holding it to the text column
+     wastes the one part of the page where width is an asset. 820px is far
+     enough out to register as deliberate and close enough not to read as
+     a different element that escaped.
+
+     The negative margin is computed rather than hard-coded so the breakout
+     collapses on its own: `min()` clamps the width to the viewport on a
+     phone, at which point the margin resolves to zero and the image simply
+     fits. No media query, and nothing to keep in sync with the column. */
+  .prose.prose-postly.prose-blog :is(img, figure) {
+    --blog-media-width: min(820px, 100vw - 40px);
+
+    width: var(--blog-media-width);
+    max-width: none;
+    margin-inline: calc((100% - var(--blog-media-width)) / 2);
+    margin-block: 48px;
+  }
+  .prose.prose-postly.prose-blog figure > img {
+    /* Already broken out by the figure — a nested image must not do it
+       twice. */
+    width: 100%;
+    margin-inline: 0;
+    margin-block: 0;
+  }
+  .prose.prose-postly.prose-blog figcaption {
+    margin-top: 12px;
+    font-size: 13px;
+    text-align: center;
+  }
 }

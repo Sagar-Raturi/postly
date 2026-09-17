@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ReadingColumn } from "@/components/public/reading-column";
+import { BlogShell } from "@/components/public/blog-shell";
+import { PostFeed } from "@/components/public/post-feed";
 import {
-  formatPublishedDate,
-  formatReadTime,
   getPublicSite,
   listPublicPosts,
   metaDescription,
+  parseYearParam,
+  postsInYear,
 } from "@/lib/public-api";
 
 /**
@@ -22,6 +23,12 @@ import {
  * There is no generateStaticParams: that would need a list of every blog on
  * Postly, and no public endpoint hands one out — deliberately, since it
  * would be a directory of every customer.
+ *
+ * `?year=2025` filters the feed to one year, which is what the archive in
+ * the profile panel links to. The filtering happens here rather than in the
+ * API because the page already holds every post in order to count them for
+ * that archive — asking the server to send a subset of what it just sent
+ * would be a second round trip for an array operation.
  */
 
 export async function generateMetadata({
@@ -32,16 +39,25 @@ export async function generateMetadata({
 
   if (!site) return {};
 
+  const description = metaDescription(site.description || site.tagline);
+
   return {
     // Absolute, so the index is titled "Sagar Raturi" and not
     // "Sagar Raturi · Sagar Raturi" through the layout's template.
     title: { absolute: site.name },
-    description: metaDescription(site.description),
+    description,
+    openGraph: {
+      type: "website",
+      siteName: site.name,
+      title: site.name,
+      description,
+    },
   };
 }
 
 export default async function BlogIndexPage({
   params,
+  searchParams,
 }: PageProps<"/[siteSlug]">) {
   const { siteSlug } = await params;
   const [site, posts] = await Promise.all([
@@ -51,59 +67,43 @@ export default async function BlogIndexPage({
 
   if (!site || !posts) notFound();
 
+  // Anything that is not a plausible year comes back null, so a reader who
+  // edits the URL gets the whole index rather than an error.
+  const year = parseYearParam((await searchParams).year);
+  const visible = year ? postsInYear(posts, year) : posts;
+
   return (
-    <ReadingColumn className="py-14 sm:py-20">
-      <header>
-        <h1 className="font-blog-heading text-[2rem] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[2.6rem]">
-          {site.name}
-        </h1>
-        {site.description ? (
-          <p className="mt-4 text-[1.125rem] leading-[1.65] text-pretty text-muted-foreground sm:text-[1.1875rem]">
-            {site.description}
-          </p>
-        ) : null}
-      </header>
+    <BlogShell site={site} posts={posts} activeYear={year}>
+      {site.description ? (
+        <p className="mb-12 max-w-[68ch] text-[19px] leading-[1.65] text-pretty text-foreground">
+          {site.description}
+        </p>
+      ) : null}
 
-      <hr className="my-12 border-border/70" />
+      {year ? (
+        <div className="mb-12 flex flex-wrap items-baseline gap-x-4 gap-y-2 border-b border-border/70 pb-6">
+          <h1 className="font-blog-heading text-[22px] leading-[1.25] tracking-[-0.015em]">
+            {visible.length} {visible.length === 1 ? "post" : "posts"} from{" "}
+            {year}
+          </h1>
+          <Link
+            href={`/${site.slug}`}
+            className="rounded-sm text-[15px] text-brand transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+          >
+            Show all posts
+          </Link>
+        </div>
+      ) : null}
 
-      {posts.length === 0 ? (
-        <p className="text-[1.0625rem] text-muted-foreground">
-          Nothing published here yet.
+      {visible.length === 0 ? (
+        <p className="text-[16px] text-muted-foreground">
+          {year
+            ? "Nothing was published that year."
+            : "Nothing published here yet."}
         </p>
       ) : (
-        <ul className="space-y-10 sm:space-y-12">
-          {posts.map((post) => (
-            <li key={post.slug}>
-              <article>
-                <h2 className="font-blog-heading text-[1.4rem] leading-[1.3] tracking-[-0.015em] text-pretty sm:text-[1.55rem]">
-                  <Link
-                    href={`/${site.slug}/${post.slug}`}
-                    className="rounded-sm transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    {post.title}
-                  </Link>
-                </h2>
-
-                <p className="mt-2 font-mono text-[0.72rem] tracking-wide text-muted-foreground uppercase">
-                  <time dateTime={post.published_at}>
-                    {formatPublishedDate(post.published_at)}
-                  </time>
-                  <span aria-hidden className="px-2">
-                    ·
-                  </span>
-                  {formatReadTime(post.read_time_minutes)}
-                </p>
-
-                {post.excerpt ? (
-                  <p className="mt-3 text-[1.0625rem] leading-[1.7] text-pretty text-muted-foreground">
-                    {post.excerpt}
-                  </p>
-                ) : null}
-              </article>
-            </li>
-          ))}
-        </ul>
+        <PostFeed siteSlug={site.slug} posts={visible} />
       )}
-    </ReadingColumn>
+    </BlogShell>
   );
 }

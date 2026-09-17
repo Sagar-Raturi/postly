@@ -50,9 +50,32 @@ const MAX_INDEX_PAGES = 10;
 export interface PublicSite {
   name: string;
   slug: string;
+  /** One line under the blog's name in the masthead. May be empty. */
+  tagline: string;
   description: string;
+
+  /* --- The profile panel ------------------------------------------- *
+   * Published on purpose: these exist to be read by strangers. Only
+   * `email` is conditional, and the condition is enforced server-side.
+   * ------------------------------------------------------------------ */
+
   /** The writer's display name. */
-  author: string;
+  display_name: string;
+  /** The "About" paragraph. May be empty — the panel omits the section. */
+  bio: string;
+  /** An absolute URL, or null: the panel draws an initials circle instead. */
+  avatar: string | null;
+
+  /**
+   * Present **only** when the writer switched their address on.
+   *
+   * Optional in the type because it is optional in the response: the API
+   * pops the key rather than sending null, so that `"email" in site` and
+   * "this writer publishes their address" are the same question. Do not
+   * give this a default, and do not render a placeholder when it is
+   * absent — see PublicSiteSerializer.to_representation on the backend.
+   */
+  email?: string;
 
   /**
    * How the writer chose to have their blog drawn.
@@ -206,6 +229,80 @@ export const getPublicPost = cache(
 /* ------------------------------------------------------------------ *
  * Presentation helpers
  * ------------------------------------------------------------------ */
+
+/**
+ * Post counts by year, newest year first — the profile panel's archive.
+ *
+ * Derived here rather than asked of the API: the index already fetches
+ * every published post to render the feed, so the counts are a group-by
+ * over data in hand. An endpoint for it would be a second round trip to
+ * learn something the first one already said.
+ */
+export interface ArchiveYear {
+  year: number;
+  count: number;
+}
+
+export function archiveByYear(posts: PublicPostSummary[]): ArchiveYear[] {
+  const counts = new Map<number, number>();
+
+  for (const post of posts) {
+    const year = new Date(post.published_at).getFullYear();
+    // A post with an unparseable date would poison the list with NaN.
+    if (!Number.isFinite(year)) continue;
+    counts.set(year, (counts.get(year) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([year, count]) => ({ year, count }))
+    .sort((a, b) => b.year - a.year);
+}
+
+/** The posts published in one year. */
+export function postsInYear(
+  posts: PublicPostSummary[],
+  year: number,
+): PublicPostSummary[] {
+  return posts.filter(
+    (post) => new Date(post.published_at).getFullYear() === year,
+  );
+}
+
+/**
+ * A `?year=` query parameter as a year, or null.
+ *
+ * Anything that is not a plausible four-digit year is null rather than an
+ * error: a reader who edits the URL should get the whole index back, not a
+ * crash and not an empty page.
+ */
+export function parseYearParam(value: string | string[] | undefined): number | null {
+  if (typeof value !== "string") return null;
+  if (!/^\d{4}$/.test(value)) return null;
+
+  const year = Number(value);
+  return year >= 1900 && year <= 2200 ? year : null;
+}
+
+/**
+ * The posts either side of `postSlug` in the blog's own order.
+ *
+ * "Newer" and "older" rather than "previous" and "next", because the feed
+ * is reverse-chronological and "next" is ambiguous the moment you say it
+ * out loud. `listPublicPosts` already returns newest first, so the entry
+ * before is the newer one.
+ */
+export function adjacentPosts(
+  posts: PublicPostSummary[],
+  postSlug: string,
+): { newer: PublicPostSummary | null; older: PublicPostSummary | null } {
+  const index = posts.findIndex((post) => post.slug === postSlug);
+  if (index === -1) return { newer: null, older: null };
+
+  return {
+    newer: posts[index - 1] ?? null,
+    older: posts[index + 1] ?? null,
+  };
+}
 
 /** "12 January 2026" — the date a post was published. */
 export function formatPublishedDate(iso: string): string {

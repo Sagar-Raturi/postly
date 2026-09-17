@@ -156,7 +156,8 @@ src/
                           post-list, post-card, post-toolbar, post-editor,
                           editor-toolbar, settings-panel, theme-picker,
                           theme-preview
-    public/               reading-column, blog-header, blog-footer
+    public/               page-container, blog-top-bar, blog-shell,
+                          profile-panel, post-feed, post-nav
     mockups/              browser-frame.tsx + screens.tsx
     motion/reveal.tsx     Reveal / Stagger / StaggerItem
   lib/
@@ -346,9 +347,106 @@ takes a site slug as its first argument and nothing in the file knows where
 that slug came from. Today the URL path supplies it; tomorrow the `Host` header
 will. See [Testing subdomains locally](#testing-subdomains-locally).
 
-The design is one 680px column — roughly 70 characters at the reading size —
-serif body at 19px, and generous leading. Postly appears exactly once, as a
-"Published with Postly" credit in the footer.
+### The layout
+
+A 1180px container, a full-width top bar, and below it a two-column grid:
+`300px 1fr` with a 64px gutter.
+
+```
+┌───────────────────────────────────────────────────────────┐
+│ Sagar Raturi                                      ᴾ Postly│  top bar
+│ Software, mountains, and the long way round.              │
+├───────────────┬───────────────────────────────────────────┤
+│  ( SR )       │  Three Weeks in Spiti Valley              │
+│  Sagar Raturi │  24 February 2026 · 9 min read            │
+│  ABOUT        │  The bus leaves Manali at five…           │
+│  Backend eng… │  Read more →                              │
+│  ─────────    │  ───────────────────────────────────────  │
+│  ARCHIVE      │  The Case for Boring Technology           │
+│  2026     16  │  …                                        │
+│  2025      4  │                                           │
+│  Published…   │                                           │
+└───────────────┴───────────────────────────────────────────┘
+      sticky                    feed / article
+```
+
+**The left column is `position: sticky`** at `top: 48px`, so the writer
+stays on screen while their posts scroll past. It is context, and context
+that scrolls away has stopped being context.
+
+**Everything in the panel except the name is optional**, and each absent
+piece is absent rather than empty: no avatar draws an initials circle in
+the theme accent, no bio removes the About section entirely, and no
+published address renders no email row at all. An empty row reads as a
+fault in the page.
+
+**Posts are blocks, not cards.** Separation is whitespace and a hairline —
+24px down to the rule, 56px up from it to the next title. A card says
+"these are separate objects"; a run of essays by one person is not a grid
+of products.
+
+**The post page narrows to 720px** while the feed stays wide. That is not
+an inconsistency: scanning a list and reading an essay are different jobs,
+and a measure that is fine for titles and two-line excerpts is bad for
+forty minutes of prose. Images inside a post break back out to 820px,
+because a photograph has no line length. The breakout is computed
+(`min(820px, 100vw - 40px)`), so it collapses to a plain fitted image on a
+phone with no media query.
+
+Below 1024px the grid becomes one column and the panel turns into a
+horizontal card above the feed, losing the sticky. Below 640px the avatar
+drops to 64px, the container padding to 20px, and post titles to 24px. The
+Postly mark stays top-right at every width.
+
+### The scales
+
+Two fixed sets, written down in the blog layout's docstring so that
+"roughly 50px" stops being an option:
+
+| | |
+| --- | --- |
+| Spacing | 4, 8, 12, 16, 24, 32, 48, 64, 96px — section gaps are 48 or 64 |
+| Type | 13, 15, 16, 19, 22, 30, 42px, written as `text-[19px]` |
+
+Two families, both already loaded: the blog's chosen display face for
+titles and its body face for prose. Muted text is the theme's
+`--muted-foreground`, which every palette defines at roughly 55-60% of the
+body colour — not an opacity on black, which goes muddy over a tinted
+background.
+
+Postly appears twice and quietly: a 20px mark top-right in the bar, and a
+"Published with Postly" credit at the foot of the profile panel (which
+moves to the bottom of the page when the panel is a horizontal card, so
+there is never more than one visible).
+
+### The profile, and the email address
+
+`display_name`, `bio` and `avatar` come from the **account**, not the
+blog — they describe the person, and a person with two blogs is the same
+person. `tagline` comes from the Site, because it describes the
+publication.
+
+**Whether a reader sees the writer's address is the writer's choice, and
+the switch is enforced on the server.** `show_email_publicly` defaults to
+`False`, and when it is off `PublicSiteSerializer.to_representation` pops
+the key out of the response entirely. Not `null`, not `""` — absent.
+
+That distinction is the whole feature. Serializing the address and letting
+the blog decide what to draw would put a private address in a public HTTP
+response, where anyone with `curl` has it whatever the page renders. And a
+`null` invites a frontend to draw an empty row or a "hidden" placeholder,
+where an absent key has exactly one possible rendering.
+
+The writer turns it on in **Settings → Your public profile**, which saves
+on the switch rather than behind a Save button: the only question the
+control answers is "is my address public right now", so the honest answer
+has to be the one on screen.
+
+`avatar` is a real `ImageField` and the public API serves its URL, but
+there is **no upload endpoint yet** — it is read-only on
+`PATCH /api/auth/user/`, and the only way a picture arrives today is the
+Django admin. Everyone else gets the initials circle, which is a designed
+state rather than a gap.
 
 **Post bodies are rendered with `dangerouslySetInnerHTML`, and that is safe
 because of what happens on the server**, not because of anything here: the

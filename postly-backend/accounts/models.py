@@ -61,6 +61,32 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text="Shown as the author on published posts.",
     )
 
+    # --- The public profile -------------------------------------------------
+    # These three are the profile panel on a published blog. They describe
+    # the writer to a stranger, so each one is either opt-in or harmless:
+    # `bio` is prose the writer chose to publish, `avatar` is a picture they
+    # uploaded, and the address behind `show_email_publicly` stays on the
+    # server until they turn it on. See blog/public_serializers.py.
+    bio = models.TextField(
+        blank=True,
+        max_length=300,
+        help_text="A short 'About' note, shown beside the posts on the "
+        "public blog. Around 300 characters — it is a paragraph, not a page.",
+    )
+    avatar = models.ImageField(
+        upload_to="avatars/",
+        null=True,
+        blank=True,
+        help_text="Optional. The blog falls back to an initials circle in "
+        "the theme's accent when this is empty.",
+    )
+    show_email_publicly = models.BooleanField(
+        default=False,
+        help_text="Whether the public blog shows this address. Off by "
+        "default: publishing an address is a decision, not a side effect of "
+        "having one.",
+    )
+
     is_active = models.BooleanField(
         default=True,
         help_text="Unselect instead of deleting an account, so their posts survive.",

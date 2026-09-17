@@ -17,6 +17,7 @@ class SiteSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "slug",
+            "tagline",
             "description",
             "domain",
             "theme",

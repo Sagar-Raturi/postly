@@ -150,8 +150,13 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Post images land here for now. TODO Phase 2+: swap for S3 via django-storages.
-MEDIA_URL = "media/"
+# Avatars land here for now. TODO Phase 2+: swap for S3 via django-storages.
+#
+# The leading slash matters: without it `ImageField.url` is a *relative*
+# path, and DRF resolves a relative path against the URL of the request it
+# is answering — so an avatar on /api/public/sites/sagar/ would serialize as
+# /api/public/sites/media/avatars/x.jpg, which is nothing.
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

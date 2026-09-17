@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { ReadingColumn } from "@/components/public/reading-column";
+import { BlogShell } from "@/components/public/blog-shell";
+import { PostNav } from "@/components/public/post-nav";
 import {
+  adjacentPosts,
   formatPublishedDate,
   formatReadTime,
   getPublicPost,
@@ -21,6 +21,12 @@ import {
  * A draft reaches this page as a 404 from the API, which becomes Next's
  * notFound(). That is the same answer a post that does not exist gets, so
  * the URL of an unpublished draft tells a reader nothing.
+ *
+ * **The article column is 720px, narrower than the feed's.** That is not an
+ * inconsistency with the index: scanning a list and reading an essay are
+ * different jobs. A wide measure is fine for titles and two-line excerpts
+ * the eye jumps between, and bad for forty minutes of continuous prose,
+ * where every line ending is a chance to lose your place.
  */
 
 /**
@@ -50,11 +56,15 @@ export async function generateMetadata({
   if (!site || !post) return { title: "Post not found" };
 
   const description = metaDescription(post.excerpt);
+  // Post.author is nulled rather than cascaded when an account closes, so
+  // the blog's owner is the fallback byline.
+  const author = post.author ?? site.display_name;
 
   return {
     // The layout's template appends the blog name.
     title: post.title,
     description,
+    authors: [{ name: author }],
     alternates: { canonical: `/${siteSlug}/${post.slug}` },
     openGraph: {
       type: "article",
@@ -62,7 +72,7 @@ export async function generateMetadata({
       title: post.title,
       description,
       publishedTime: post.published_at,
-      authors: post.author ? [post.author] : undefined,
+      authors: [author],
     },
     twitter: {
       card: "summary_large_image",
@@ -76,23 +86,32 @@ export default async function PostPage({
   params,
 }: PageProps<"/[siteSlug]/[postSlug]">) {
   const { siteSlug, postSlug } = await params;
-  const post = await getPublicPost(siteSlug, postSlug);
 
-  if (!post) notFound();
+  // The site and the post list are both already cached by the layout's own
+  // call, so the only new request here is the post itself.
+  const [site, post, posts] = await Promise.all([
+    getPublicSite(siteSlug),
+    getPublicPost(siteSlug, postSlug),
+    listPublicPosts(siteSlug),
+  ]);
+
+  if (!site || !post) notFound();
+
+  const { newer, older } = adjacentPosts(posts ?? [], post.slug);
 
   return (
-    <ReadingColumn className="py-14 sm:py-20">
-      <article>
+    <BlogShell site={site} posts={posts ?? []}>
+      <article className="max-w-[720px]">
         <header>
-          <h1 className="font-blog-heading text-[2rem] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[2.5rem]">
+          <h1 className="font-blog-heading text-[30px] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[42px]">
             {post.title}
           </h1>
 
-          <p className="mt-5 font-mono text-[0.72rem] tracking-wide text-muted-foreground uppercase">
+          <p className="mt-4 text-[13px] text-muted-foreground">
             <time dateTime={post.published_at}>
               {formatPublishedDate(post.published_at)}
             </time>
-            <span aria-hidden className="px-2">
+            <span aria-hidden className="px-2 opacity-60">
               ·
             </span>
             {formatReadTime(post.read_time_minutes)}
@@ -104,22 +123,20 @@ export default async function PostPage({
           allowlist server-side, on its way out of the public API, because
           until blogs move to their own subdomains this page shares an
           origin with the dashboard — see postly-backend/blog/sanitize.py.
+
+          `prose-blog` is the reading-size variant of `prose-postly`: 19px
+          at 1.7, 1.5em between paragraphs, and images allowed to break out
+          past the 720px measure. See globals.css.
         */}
         <div
-          className="prose prose-postly mt-10 max-w-none font-blog-body text-[1.1875rem] leading-[1.75]"
+          className="prose prose-postly prose-blog mt-12 max-w-none font-blog-body"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
       </article>
 
-      <nav className="mt-16 border-t border-border/70 pt-8">
-        <Link
-          href={`/${siteSlug}`}
-          className="inline-flex items-center gap-2 rounded-sm text-[0.9rem] text-muted-foreground transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          <ArrowLeft aria-hidden className="size-3.5" />
-          All posts
-        </Link>
-      </nav>
-    </ReadingColumn>
+      <div className="max-w-[720px]">
+        <PostNav siteSlug={siteSlug} newer={newer} older={older} />
+      </div>
+    </BlogShell>
   );
 }

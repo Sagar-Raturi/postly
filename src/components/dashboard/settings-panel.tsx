@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Container } from "@/components/site/primitives";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { SiteLinkChip } from "@/components/dashboard/site-link-chip";
@@ -19,7 +20,13 @@ import {
   DEFAULT_THEME,
   type BlogAppearance,
 } from "@/lib/blog-theme";
-import { ApiError, getCurrentSite, updateSite, type Site } from "@/lib/api";
+import {
+  ApiError,
+  getCurrentSite,
+  updateCurrentUser,
+  updateSite,
+  type Site,
+} from "@/lib/api";
 
 /**
  * What the account menu's "Settings" opens.
@@ -40,6 +47,7 @@ export function SettingsPanel() {
   const [site, setSite] = React.useState<Site | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [name, setName] = React.useState("");
+  const [tagline, setTagline] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [look, setLook] = React.useState<BlogAppearance>({
     theme: DEFAULT_THEME,
@@ -62,6 +70,7 @@ export function SettingsPanel() {
         }
         setSite(current);
         setName(current.name);
+        setTagline(current.tagline);
         setDescription(current.description);
         setLook(appearanceOf(current));
       } catch (err) {
@@ -85,6 +94,7 @@ export function SettingsPanel() {
   const dirty =
     site !== null &&
     (name.trim() !== site.name ||
+      tagline.trim() !== site.tagline ||
       description.trim() !== site.description ||
       !sameAppearance(look, appearanceOf(site)));
 
@@ -97,11 +107,13 @@ export function SettingsPanel() {
     try {
       const updated = await updateSite(site.id, {
         name: name.trim(),
+        tagline: tagline.trim(),
         description: description.trim(),
         ...look,
       });
       setSite(updated);
       setName(updated.name);
+      setTagline(updated.tagline);
       setDescription(updated.description);
       setLook(appearanceOf(updated));
       setSaved(true);
@@ -185,6 +197,26 @@ export function SettingsPanel() {
                       required
                       className="h-10"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="site-tagline"
+                      className="block text-[0.85rem] font-medium"
+                    >
+                      Tagline
+                    </label>
+                    <Input
+                      id="site-tagline"
+                      value={tagline}
+                      onChange={(event) => setTagline(event.target.value)}
+                      maxLength={160}
+                      placeholder="Software, mountains, and the long way round."
+                      className="h-10"
+                    />
+                    <p className="text-[0.8rem] text-muted-foreground">
+                      One line, under your name at the top of every page.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -291,6 +323,8 @@ export function SettingsPanel() {
                 </div>
               </section>
 
+              <PublicProfileSection />
+
               <section className="rounded-2xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
                 <h2 className="font-display text-xl">Your account</h2>
                 <p className="mt-1 text-[0.875rem] text-muted-foreground">
@@ -316,6 +350,202 @@ export function SettingsPanel() {
       </main>
     </>
   );
+}
+
+/**
+ * "Your public profile" — the About text, and whether readers get the
+ * writer's email address.
+ *
+ * Both controls save on their own rather than through the page's Save
+ * button. The switch because a toggle that needs confirming is a toggle you
+ * cannot trust: the only question it answers is "is my address public right
+ * now", and the honest answer has to be the one on screen. The bio saves
+ * when the field loses focus, so the section has one status line and one
+ * mental model rather than two.
+ */
+function PublicProfileSection() {
+  const { user, refresh } = useAuth();
+
+  const [bio, setBio] = React.useState("");
+  const [status, setStatus] = React.useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
+  const [error, setError] = React.useState<string | null>(null);
+
+  // The provider loads the account after this mounts, so the field takes
+  // its initial value when that arrives — once, and only once. Keying this
+  // on `user` alone would have every refresh() overwrite whatever is
+  // half-typed in the box.
+  const seeded = React.useRef(false);
+  React.useEffect(() => {
+    if (seeded.current || !user) return;
+    seeded.current = true;
+    setBio(user.bio);
+  }, [user]);
+
+  React.useEffect(() => {
+    if (status !== "saved") return;
+    const timer = window.setTimeout(() => setStatus("idle"), 2500);
+    return () => window.clearTimeout(timer);
+  }, [status]);
+
+  async function save(
+    patch: Partial<{ bio: string; show_email_publicly: boolean }>,
+  ) {
+    setStatus("saving");
+    setError(null);
+    try {
+      await updateCurrentUser(patch);
+      // Re-read rather than patching a local copy: the account object is
+      // what the rest of the dashboard renders from, and the serializer
+      // trims the bio on its way in.
+      await refresh();
+      setStatus("saved");
+    } catch (err) {
+      setStatus("idle");
+      setError(
+        err instanceof ApiError ? err.detail : "Could not save that change.",
+      );
+    }
+  }
+
+  const showEmail = user?.show_email_publicly ?? false;
+
+  return (
+    <section className="rounded-2xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="font-display text-xl">Your public profile</h2>
+        <SaveStatus status={status} />
+      </div>
+      <p className="mt-1 text-[0.875rem] text-muted-foreground">
+        The panel beside your posts, on every page of your blog.
+      </p>
+
+      {error ? (
+        <p
+          role="alert"
+          className="mt-4 text-[0.85rem] font-medium text-destructive"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <div className="mt-6 space-y-2">
+        <label htmlFor="user-bio" className="block text-[0.85rem] font-medium">
+          About
+        </label>
+        <textarea
+          id="user-bio"
+          value={bio}
+          onChange={(event) => setBio(event.target.value)}
+          onBlur={() => {
+            if (user && bio.trim() !== user.bio) void save({ bio: bio.trim() });
+          }}
+          rows={4}
+          maxLength={300}
+          disabled={!user}
+          placeholder="A couple of lines about who you are and what you write."
+          className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-[0.9rem] leading-relaxed transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30"
+        />
+        <p className="text-[0.8rem] text-muted-foreground">
+          {300 - bio.length} characters left. Saves when you click away.
+        </p>
+      </div>
+
+      <div className="mt-7 border-t border-border pt-6">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <label
+              htmlFor="show-email"
+              className="block text-[0.9rem] font-medium"
+            >
+              Show my email address on my public blog
+            </label>
+            <p
+              id="show-email-help"
+              className="mt-1.5 max-w-prose text-[0.8rem] leading-relaxed text-muted-foreground"
+            >
+              Visitors will be able to email you directly. Addresses published
+              on public pages are often collected by spam bots.
+            </p>
+          </div>
+
+          <Switch
+            id="show-email"
+            aria-describedby="show-email-help"
+            checked={showEmail}
+            disabled={!user || status === "saving"}
+            onCheckedChange={(next) => void save({ show_email_publicly: next })}
+            className="mt-0.5"
+          />
+        </div>
+
+        {/*
+          Shown only while the switch is on, because it is a preview of
+          something that is now true rather than a demonstration of what
+          would happen. Off, there is nothing to preview: the API stops
+          sending the address at all.
+        */}
+        {showEmail && user ? (
+          <div className="mt-5 rounded-xl bg-muted/50 p-4 ring-1 ring-border">
+            <p className="text-[0.75rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+              On your blog
+            </p>
+
+            <div className="mt-3 flex items-center gap-3">
+              <span
+                aria-hidden
+                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand/12 font-display text-[1rem] font-medium text-brand"
+              >
+                {previewInitials(user.display_name)}
+              </span>
+              <div className="min-w-0">
+                <p className="font-display text-[1.05rem] leading-tight">
+                  {user.display_name}
+                </p>
+                <p className="mt-0.5 truncate text-[0.8rem] text-muted-foreground">
+                  {user.email}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function SaveStatus({ status }: { status: "idle" | "saving" | "saved" }) {
+  if (status === "idle") return null;
+
+  return (
+    <span
+      aria-live="polite"
+      className="inline-flex items-center gap-1.5 text-[0.85rem] text-brand"
+    >
+      {status === "saving" ? (
+        <>
+          <Loader2 aria-hidden className="size-3.5 animate-spin" />
+          Saving
+        </>
+      ) : (
+        <>
+          <Check aria-hidden className="size-3.5" />
+          Saved
+        </>
+      )}
+    </span>
+  );
+}
+
+/** Mirrors the initials circle the published profile panel draws. */
+function previewInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+
+  const first = [...words[0]][0] ?? "";
+  const last = words.length > 1 ? ([...words[words.length - 1]][0] ?? "") : "";
+  return (first + last).toUpperCase();
 }
 
 /** The appearance half of a Site, as the picker and preview want it. */

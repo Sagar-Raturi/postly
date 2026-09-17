@@ -122,8 +122,13 @@ class TestNothingPrivateLeaks:
         assert set(body) == {
             "name",
             "slug",
+            "tagline",
             "description",
-            "author",
+            # The profile panel. Published on purpose — these fields exist
+            # to be read by strangers.
+            "display_name",
+            "bio",
+            "avatar",
             # The blog cannot render without these, and none of them is a
             # colour — see PublicSiteSerializer.
             "theme",
@@ -131,7 +136,9 @@ class TestNothingPrivateLeaks:
             "font_pairing",
             "accent_hue",
         }
-        assert body["author"] == user_a.display_name
+        assert body["display_name"] == user_a.display_name
+        # `email` is absent because the default is off. TestPublicEmailIsOptIn
+        # below is where that rule is actually pinned.
         assert not self.FORBIDDEN & set(body)
         assert user_a.email not in response_text(body)
 
@@ -177,6 +184,104 @@ class TestNothingPrivateLeaks:
 
         assert body["author"] is None
         assert body["content"] == published.content
+
+
+class TestPublicEmailIsOptIn:
+    """
+    Whether a reader sees the writer's address is the writer's decision,
+    and the switch is enforced on the server.
+
+    The rule these pin is not "the frontend hides it" but "the response does
+    not contain it": an address that is in the JSON is public, whatever any
+    page chooses to draw. See PublicSiteSerializer.to_representation.
+    """
+
+    def test_default_response_has_no_email_key(self, api, site, user_a):
+        """A new account is private. Nobody had to choose that."""
+        assert user_a.show_email_publicly is False, "the default must be off"
+
+        body = api.get(site_url(site.slug)).json()
+
+        # Absent, not null and not "": an absent key has exactly one
+        # possible rendering, which is nothing at all.
+        assert "email" not in body
+        assert user_a.email not in response_text(body)
+
+    def test_email_is_present_once_the_owner_switches_it_on(
+        self, api, site, user_a
+    ):
+        user_a.show_email_publicly = True
+        user_a.save(update_fields=["show_email_publicly"])
+
+        body = api.get(site_url(site.slug)).json()
+
+        assert body["email"] == user_a.email
+
+    def test_switching_it_back_off_removes_it_again(self, api, site, user_a):
+        """Un-publishing has to actually un-publish, on the next request."""
+        user_a.show_email_publicly = True
+        user_a.save(update_fields=["show_email_publicly"])
+        assert "email" in api.get(site_url(site.slug)).json()
+
+        user_a.show_email_publicly = False
+        user_a.save(update_fields=["show_email_publicly"])
+
+        body = api.get(site_url(site.slug)).json()
+        assert "email" not in body
+        assert user_a.email not in response_text(body)
+
+    def test_the_switch_is_per_account(self, api, site, other_site, user_a, user_b):
+        """One writer publishing their address says nothing about another's."""
+        user_a.show_email_publicly = True
+        user_a.save(update_fields=["show_email_publicly"])
+
+        mine = api.get(site_url(site.slug)).json()
+        theirs = api.get(site_url(other_site.slug)).json()
+
+        assert mine["email"] == user_a.email
+        assert "email" not in theirs
+        assert user_b.email not in response_text(theirs)
+
+    def test_it_never_reaches_the_post_endpoints(self, api, site, published, user_a):
+        """
+        The switch publishes an address in one place — the profile panel,
+        which reads the site endpoint. A post is not a profile.
+        """
+        user_a.show_email_publicly = True
+        user_a.save(update_fields=["show_email_publicly"])
+
+        listing = api.get(posts_url(site.slug)).json()
+        detail = api.get(post_url(site.slug, published.slug)).json()
+
+        assert user_a.email not in response_text(listing)
+        assert user_a.email not in response_text(detail)
+
+
+class TestPublicProfile:
+    """The fields the profile panel is drawn from."""
+
+    def test_bio_and_tagline_are_published(self, api, site, user_a):
+        user_a.bio = "I write about attention, mostly."
+        user_a.save(update_fields=["bio"])
+        site.tagline = "Essays, slowly."
+        site.save(update_fields=["tagline"])
+
+        body = api.get(site_url(site.slug)).json()
+
+        assert body["bio"] == "I write about attention, mostly."
+        assert body["tagline"] == "Essays, slowly."
+
+    def test_an_empty_profile_still_renders(self, api, site):
+        """
+        Every profile field is optional. They come back empty rather than
+        missing, because the blog draws a fallback for each — an initials
+        circle for the avatar, and nothing at all for an empty bio.
+        """
+        body = api.get(site_url(site.slug)).json()
+
+        assert body["bio"] == ""
+        assert body["tagline"] == ""
+        assert body["avatar"] is None
 
 
 class TestTheming:

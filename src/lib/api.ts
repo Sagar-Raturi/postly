@@ -31,6 +31,20 @@ export interface User {
   id: number;
   email: string;
   display_name: string;
+
+  /** The "About" paragraph on the public blog. Up to 300 characters. */
+  bio: string;
+  /** An absolute URL, or null. Read-only: there is no upload endpoint yet. */
+  avatar: string | null;
+  /**
+   * Whether the public blog publishes `email`.
+   *
+   * Off by default, and the switch is enforced on the server: when it is
+   * false the public site endpoint omits the key entirely rather than
+   * sending it for the blog to hide. See PublicSiteSerializer.
+   */
+  show_email_publicly: boolean;
+
   date_joined: string;
 }
 
@@ -38,6 +52,8 @@ export interface Site {
   id: number;
   name: string;
   slug: string;
+  /** One line under the blog's name in its masthead. May be empty. */
+  tagline: string;
   description: string;
   domain: string;
   /** How the published blog is drawn — see `src/lib/blog-theme.ts`. */
@@ -302,6 +318,22 @@ export async function login(email: string, password: string): Promise<User> {
   const user = await getCurrentUser();
   if (!user) throw new ApiError("Logged in, but the session did not stick.", 0, null);
   return user;
+}
+
+/**
+ * Changes the signed-in account — display name, bio, or whether the public
+ * blog shows the address.
+ *
+ * `email` and `avatar` are read-only on this endpoint: changing an address
+ * means re-verifying it, and there is no avatar upload yet.
+ */
+export function updateCurrentUser(
+  data: Partial<Pick<User, "display_name" | "bio" | "show_email_publicly">>,
+): Promise<User> {
+  return request<User>("/auth/user/", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
 
 export function logout(): Promise<{ detail: string }> {
