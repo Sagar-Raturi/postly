@@ -12,8 +12,13 @@ Two properties are load-bearing and get their own tests:
   nothing about the account behind them.
 """
 
+import re
+from io import BytesIO
+
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from PIL import Image
 
 from blog.models import Post, Site
 
@@ -30,6 +35,13 @@ def posts_url(slug: str) -> str:
 
 def post_url(slug: str, post_slug: str) -> str:
     return reverse("public-post-detail", args=[slug, post_slug])
+
+
+def portrait() -> SimpleUploadedFile:
+    """A real JPEG, because the upload endpoint decodes what it is given."""
+    buffer = BytesIO()
+    Image.new("RGB", (400, 400), (90, 130, 180)).save(buffer, format="JPEG")
+    return SimpleUploadedFile("me.jpg", buffer.getvalue(), content_type="image/jpeg")
 
 
 class TestReachableWhileLoggedOut:
@@ -124,6 +136,8 @@ class TestNothingPrivateLeaks:
             "slug",
             "description",
             "author",
+            # A picture the writer chose in order to publish it.
+            "author_avatar",
             # The blog cannot render without these, and none of them is a
             # colour — see PublicSiteSerializer.
             "theme",
@@ -177,6 +191,57 @@ class TestNothingPrivateLeaks:
 
         assert body["author"] is None
         assert body["content"] == published.content
+
+
+class TestAuthorAvatar:
+    """
+    The writer's picture, as a reader's browser has to receive it.
+
+    The blog is rendered by Next.js on a different origin to the media
+    files, so a relative "/media/..." would resolve against the blog's own
+    host and 404. Absolute is the requirement, not a nicety.
+    """
+
+    def test_is_null_when_the_writer_has_not_set_one(self, api, site):
+        assert api.get(site_url(site.slug)).json()["author_avatar"] is None
+
+    def test_is_an_absolute_url_once_set(self, api, api_a, site):
+        api_a.post("/api/auth/user/avatar/", {"avatar": portrait()}, format="multipart")
+
+        avatar = api.get(site_url(site.slug)).json()["author_avatar"]
+
+        assert avatar.startswith("http://")
+        assert "/media/avatars/" in avatar
+        # The bug the leading slash on MEDIA_URL exists to prevent: a
+        # relative URL resolved against the endpoint's own path.
+        assert "/api/public/" not in avatar
+
+    def test_the_file_it_points_at_is_the_one_on_disk(self, api, api_a, site, user_a):
+        api_a.post("/api/auth/user/avatar/", {"avatar": portrait()}, format="multipart")
+        user_a.refresh_from_db()
+
+        avatar = api.get(site_url(site.slug)).json()["author_avatar"]
+
+        assert avatar.endswith(user_a.avatar.name)
+
+    def test_removing_it_takes_it_off_the_public_blog(self, api, api_a, site):
+        api_a.post("/api/auth/user/avatar/", {"avatar": portrait()}, format="multipart")
+        api_a.delete("/api/auth/user/avatar/")
+
+        assert api.get(site_url(site.slug)).json()["author_avatar"] is None
+
+    def test_it_does_not_bring_the_account_with_it(self, api, api_a, site, user_a):
+        """A picture is publishable; the account behind it still is not."""
+        api_a.post("/api/auth/user/avatar/", {"avatar": portrait()}, format="multipart")
+
+        body = api.get(site_url(site.slug)).json()
+
+        assert user_a.email not in response_text(body)
+
+        # The filename is a random uuid rather than anything derived from
+        # the account, so the URL is not a way to enumerate writers.
+        stem = body["author_avatar"].rsplit("/", 1)[-1].split(".")[0]
+        assert re.fullmatch(r"[0-9a-f]{32}", stem)
 
 
 class TestTheming:

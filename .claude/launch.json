@@ -4,8 +4,31 @@
     {
       "name": "postly-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000
+    },
+    {
+      "name": "postly-api",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "postly-backend/manage.py",
+        "runserver",
+        "8000"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "postly-api-venv",
+      "runtimeExecutable": "postly-backend/.venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "postly-backend/manage.py",
+        "runserver",
+        "8000"
+      ],
+      "port": 8000
     }
   ]
 }

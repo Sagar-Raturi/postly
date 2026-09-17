@@ -33,6 +33,11 @@ class PublicSiteSerializer(serializers.ModelSerializer):
     # The writer's display name — never the account's email or id.
     author = serializers.CharField(source="owner.display_name", read_only=True)
 
+    # A picture the writer chose in order to publish it, so it belongs on
+    # the public surface in a way an email address never would. Null when
+    # they have not set one, which the blog renders as initials.
+    author_avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = Site
         fields = [
@@ -40,12 +45,26 @@ class PublicSiteSerializer(serializers.ModelSerializer):
             "slug",
             "description",
             "author",
+            "author_avatar",
             "theme",
             "appearance",
             "font_pairing",
             "accent_hue",
         ]
         read_only_fields = fields
+
+    def get_author_avatar(self, obj: Site) -> str | None:
+        """
+        An absolute URL, because the reader's page is served by Next.js on
+        a different origin to the media files. A relative "/media/..." here
+        would resolve against the blog's own host and 404.
+        """
+        avatar = obj.owner.avatar if obj.owner_id else None
+        if not avatar:
+            return None
+
+        request = self.context.get("request")
+        return request.build_absolute_uri(avatar.url) if request else avatar.url
 
 
 class PublicPostListSerializer(serializers.ModelSerializer):

@@ -6,9 +6,24 @@ Postly identifies people by email address: there is no username field, and
 history, so it exists from the first migration — see MIGRATION.md.
 """
 
+import uuid
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+
+
+def avatar_path(instance, filename: str) -> str:
+    """
+    Where an uploaded avatar lands.
+
+    The name the browser sent is thrown away rather than slugified. It is
+    attacker-controlled, it is sometimes revealing ("passport-photo.jpg"),
+    and it is never useful — the file is re-encoded on the way in, so the
+    only part worth keeping is the extension the re-encoder chose.
+    """
+    suffix = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    return f"avatars/{uuid.uuid4().hex}.{suffix}"
 
 
 class UserManager(BaseUserManager):
@@ -59,6 +74,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     display_name = models.CharField(
         max_length=80,
         help_text="Shown as the author on published posts.",
+    )
+
+    avatar = models.ImageField(
+        upload_to=avatar_path,
+        null=True,
+        blank=True,
+        help_text="Shown next to the byline on the writer's public blog.",
     )
 
     is_active = models.BooleanField(

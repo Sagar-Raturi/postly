@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProfilePanel } from "@/components/public/profile-panel";
 import { ReadingColumn } from "@/components/public/reading-column";
 import {
   formatPublishedDate,
@@ -62,6 +63,13 @@ export default async function BlogIndexPage({
             {site.description}
           </p>
         ) : null}
+
+        {/* Below the description rather than above the title: the blog is
+            the thing a reader arrived for, and the person writing it is the
+            answer to the question they ask second. */}
+        <div className="mt-6">
+          <ProfilePanel name={site.author} avatar={site.author_avatar} />
+        </div>
       </header>
 
       <hr className="my-12 border-border/70" />
