@@ -11,7 +11,14 @@ not these views — see the TODO in settings.MIDDLEWARE.
 
 from django.urls import path
 
-from .public_views import PublicPostDetailView, PublicPostListView, PublicSiteView
+from .public_views import (
+    ConfirmSubscriptionView,
+    PublicPostDetailView,
+    PublicPostListView,
+    PublicSiteView,
+    SubscribeView,
+    UnsubscribeView,
+)
 
 urlpatterns = [
     path("sites/<slug:slug>/", PublicSiteView.as_view(), name="public-site"),
@@ -24,5 +31,25 @@ urlpatterns = [
         "sites/<slug:slug>/posts/<slug:post_slug>/",
         PublicPostDetailView.as_view(),
         name="public-post-detail",
+    ),
+    # --- Subscriptions -------------------------------------------------------
+    # Subscribing is something you do *to a blog*, so it hangs off the site
+    # path. The two token endpoints are not: a token already names one
+    # subscription on one site, and repeating the slug in the URL would only
+    # create a second source of truth for it to disagree with.
+    path(
+        "sites/<slug:slug>/subscribe/",
+        SubscribeView.as_view(),
+        name="public-subscribe",
+    ),
+    path(
+        "subscriptions/confirm/",
+        ConfirmSubscriptionView.as_view(),
+        name="public-subscription-confirm",
+    ),
+    path(
+        "subscriptions/unsubscribe/",
+        UnsubscribeView.as_view(),
+        name="public-subscription-unsubscribe",
     ),
 ]

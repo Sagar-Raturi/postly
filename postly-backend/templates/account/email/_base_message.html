@@ -13,7 +13,17 @@ src/app/globals.css: warm paper, ink, deep forest.
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background:#ffffff;border-radius:14px;border:1px solid #e6e3dc;">
             <tr>
               <td style="padding:32px 32px 0 32px;font-family:Georgia,'Times New Roman',serif;font-size:19px;color:#2b2721;">
-                Postly
+                {% comment %}
+                Account mail is from Postly and says so. Mail to a blog's
+                readers passes the blog's name instead: they typed their
+                address into somebody's blog and have no reason to know what
+                Postly is.
+
+                A comment tag rather than the hash form, which is
+                single-line only: spread a hash comment over three lines and
+                it stops being a comment and is printed into the message.
+                {% endcomment %}
+                {{ brand|default:"Postly" }}
               </td>
             </tr>
             <tr>
@@ -42,6 +52,22 @@ src/app/globals.css: warm paper, ink, deep forest.
                 {{ footnote }}
               </td>
             </tr>
+            {% if unsubscribe_url %}
+            {% comment %}
+            Bulk mail only — account mail passes no unsubscribe_url, because
+            there is no opting out of a password reset you asked for.
+
+            A visible link, not only the List-Unsubscribe header: the header
+            is honoured by Gmail and Apple Mail and ignored by plenty else,
+            and a reader who cannot find a way out reaches for "report spam"
+            instead. That button costs far more than the subscriber does.
+            {% endcomment %}
+            <tr>
+              <td style="padding:0 32px 32px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#8a8377;">
+                <a href="{{ unsubscribe_url }}" style="color:#8a8377;text-decoration:underline;">Unsubscribe</a>
+              </td>
+            </tr>
+            {% endif %}
           </table>
         </td>
       </tr>

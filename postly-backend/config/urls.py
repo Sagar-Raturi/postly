@@ -10,6 +10,10 @@ urlpatterns = [
     # with no Postly account. Listed above the private API so the two
     # surfaces are visibly separate.
     path("api/public/", include("blog.public_urls")),
+    # Callbacks from the mail provider. Reachable without a session like
+    # the public API, but authenticated by an HMAC over the body rather
+    # than by anything about the caller — see blog/webhooks.py.
+    path("api/webhooks/", include("blog.webhook_urls")),
     path("api/", include("blog.urls")),
 ]
 

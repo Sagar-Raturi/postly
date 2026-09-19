@@ -1,0 +1,19 @@
+{% autoescape off %}{{ post_title }}
+
+A new post on {{ site_name }}.
+{% if post_excerpt %}
+{{ post_excerpt }}
+{% endif %}
+Read it here:
+
+{{ post_url }}
+
+—
+
+You are getting this because you confirmed a subscription to
+{{ site_name }}. Unsubscribe at any time:
+
+{{ unsubscribe_url }}
+
+Sent by Postly on behalf of {{ site_name }}.
+{% endautoescape %}

@@ -66,6 +66,14 @@ export interface Site {
   font_pairing: FontPairing;
   /** An OKLCH hue 0-360, or null for the theme's own accent. */
   accent_hue: number | null;
+  /**
+   * Whether readers are offered an email subscription on this blog.
+   *
+   * Off until the writer turns it on. Switching it off stops new sign-ups
+   * — the subscribe endpoint 404s — and leaves everyone already on the
+   * list exactly where they were.
+   */
+  subscriptions_enabled: boolean;
   posts_count: number;
   created_at: string;
   updated_at: string;
@@ -99,6 +107,14 @@ export interface PostListItem {
 export interface Post extends PostListItem {
   site_name: string;
   author_name: string | null;
+  /**
+   * Whether this post's blog offers subscriptions, carried on the post so
+   * the editor can decide whether to offer "email subscribers" without a
+   * second request. Read-only — the switch is on the site.
+   */
+  site_subscriptions_enabled: boolean;
+  /** Null unless publishing this post queued mail — see PostEmailSummary. */
+  email_delivery: PostEmailSummary | null;
 }
 
 export interface Paginated<T> {
@@ -121,6 +137,16 @@ export type PostInput = {
   content?: string;
   excerpt?: string;
   status?: PostStatus;
+  /**
+   * Whether publishing this post should email the blog's subscribers.
+   *
+   * Write-only, and read by the API **only on the request that publishes**
+   * — the transition from draft to published. Sending it with an autosave
+   * of an already-published post does nothing, which is what stops the
+   * dashboard mailing the list once per keystroke. Defaults to true
+   * server-side, so omitting it means "yes".
+   */
+  notify_subscribers?: boolean;
 };
 
 /* ------------------------------------------------------------------ *
@@ -566,4 +592,112 @@ export function updatePost(
 
 export function deletePost(id: number): Promise<void> {
   return request<void>(`/posts/${id}/`, { method: "DELETE" });
+}
+
+/* ------------------------------------------------------------------ *
+ * Subscribers
+ *
+ * The writer's own mailing list. Read-only on purpose — every column is a
+ * record of something a *reader* did, and the endpoints that write them
+ * are the public ones a reader touches, plus the provider webhook.
+ *
+ * `unsubscribe_token` is deliberately absent from these types because it
+ * is absent from the API. It ends a subscription for whoever holds it,
+ * with no session, which is exactly what an unsubscribe link in an old
+ * email has to do — and exactly why it is not in a payload the dashboard
+ * can read.
+ * ------------------------------------------------------------------ */
+
+export type SubscriberStatus =
+  | "pending"
+  | "confirmed"
+  | "unsubscribed"
+  | "bounced"
+  | "complained";
+
+/** Where on the blog somebody signed up. */
+export type SubscriberSource = "index" | "post" | "unknown";
+
+export interface Subscriber {
+  id: number;
+  site: number;
+  email: string;
+  status: SubscriberStatus;
+  source: SubscriberSource;
+  created_at: string;
+  confirmed_at: string | null;
+  unsubscribed_at: string | null;
+}
+
+/**
+ * Counts by status, plus two derived numbers.
+ *
+ * Every status is always present, at zero if need be, so the page can
+ * render a fixed set of tiles rather than whatever keys happened to
+ * arrive — a tile that vanishes when its count hits zero reads as a bug.
+ */
+export interface SubscriberStats {
+  pending: number;
+  confirmed: number;
+  unsubscribed: number;
+  bounced: number;
+  complained: number;
+  total: number;
+  /** Confirmed, and nothing else: how many people get the next post. */
+  active: number;
+}
+
+export interface SubscriberFilters {
+  site?: number;
+  status?: SubscriberStatus;
+  search?: string;
+  page?: number;
+}
+
+export function getSubscribers(
+  filters: SubscriberFilters = {},
+): Promise<Paginated<Subscriber>> {
+  return request<Paginated<Subscriber>>(`/subscribers/${buildQuery(filters)}`);
+}
+
+export function getSubscriberStats(
+  filters: Omit<SubscriberFilters, "page"> = {},
+): Promise<SubscriberStats> {
+  return request<SubscriberStats>(`/subscribers/stats/${buildQuery(filters)}`);
+}
+
+/**
+ * The URL of the CSV export, for an `<a download>` rather than a fetch.
+ *
+ * A link, not a request: the browser's own download handling names the
+ * file from Content-Disposition, streams it to disk and shows it in the
+ * downloads tray. Fetching it into memory to build a blob would throw all
+ * of that away and hold the whole list in a JavaScript string on the way
+ * past. The session cookie rides along on a same-site navigation exactly
+ * as it does on a fetch.
+ */
+export function subscriberExportUrl(
+  filters: Omit<SubscriberFilters, "page"> = {},
+): string {
+  return `${BASE_URL}/subscribers/export/${buildQuery(filters)}`;
+}
+
+/**
+ * What became of a post's notification to subscribers.
+ *
+ * Null on the post until it is published on a blog with subscriptions on —
+ * and null forever if the writer unticked "email subscribers", which is
+ * why the editor renders nothing rather than an empty panel.
+ *
+ * Mirrors PostEmailSummarySerializer, which deliberately omits the outbox
+ * row's `error` (a Python exception string) and `last_subscriber_id` (a
+ * resume cursor). Neither is something to put in front of a writer.
+ */
+export interface PostEmailSummary {
+  status: "pending" | "sending" | "sent" | "failed";
+  /** When the send is due. The gap after publishing is the window in
+   *  which unpublishing still cancels it. */
+  scheduled_for: string;
+  sent_count: number;
+  sent_at: string | null;
 }

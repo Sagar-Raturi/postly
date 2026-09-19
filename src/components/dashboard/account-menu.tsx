@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronDown, LogOut, Settings } from "lucide-react";
+import { ChevronDown, LogOut, Settings, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,6 +77,11 @@ export function AccountMenu() {
         </DropdownMenuGroup>
 
         <DropdownMenuSeparator />
+
+        <DropdownMenuItem render={<Link href="/dashboard/subscribers" />}>
+          <Users aria-hidden />
+          Subscribers
+        </DropdownMenuItem>
 
         <DropdownMenuItem render={<Link href="/dashboard/settings" />}>
           <Settings aria-hidden />

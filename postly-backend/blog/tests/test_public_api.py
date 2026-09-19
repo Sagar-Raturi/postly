@@ -147,6 +147,9 @@ class TestNothingPrivateLeaks:
             "appearance",
             "font_pairing",
             "accent_hue",
+            # Whether to draw a subscribe form. Says nothing about who has
+            # subscribed — see blog/tests/test_subscriptions.py.
+            "subscriptions_enabled",
         }
         assert body["display_name"] == user_a.display_name
         # `email` is absent because the default is off. TestPublicEmailIsOptIn

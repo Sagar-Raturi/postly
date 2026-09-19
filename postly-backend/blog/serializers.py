@@ -1,7 +1,8 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from .models import Post, Site
+from .emails import cancel_post_email, schedule_post_email
+from .models import Post, PostEmail, Site, Subscriber
 from .subdomains import clean_subdomain
 
 
@@ -24,6 +25,10 @@ class SiteSerializer(serializers.ModelSerializer):
             "appearance",
             "font_pairing",
             "accent_hue",
+            # Writable: this is the switch that offers readers a
+            # subscription at all. Without it here, the column added in
+            # Phase 1 would be reachable only from the Django admin.
+            "subscriptions_enabled",
             "posts_count",
             "created_at",
             "updated_at",
@@ -60,12 +65,43 @@ class SiteSerializer(serializers.ModelSerializer):
         return annotated if annotated is not None else obj.posts.count()
 
 
+class PostEmailSummarySerializer(serializers.ModelSerializer):
+    """
+    What became of a post's notification, for the writer who published it.
+
+    A summary rather than the row: `last_subscriber_id` is internal
+    bookkeeping and `error` is a Python exception string, which is the right
+    thing to put in a log and the wrong thing to put in front of somebody
+    who wants to know whether their post went out.
+
+    `status` carries that instead, and the four values are honest about the
+    four situations — still waiting, going out now, done, and gave up.
+    """
+
+    class Meta:
+        model = PostEmail
+        fields = ["status", "scheduled_for", "sent_count", "sent_at"]
+        read_only_fields = fields
+
+
 class PostSerializer(serializers.ModelSerializer):
     """Full representation, used for retrieve/create/update."""
 
     site_name = serializers.CharField(source="site.name", read_only=True)
     author_name = serializers.CharField(source="author.display_name", read_only=True)
     read_time_minutes = serializers.IntegerField(read_only=True)
+
+    # Denormalised onto the post so the editor can decide whether to offer
+    # the "email subscribers" checkbox without a second request for the
+    # site. Read-only here — the switch itself lives on SiteSerializer.
+    site_subscriptions_enabled = serializers.BooleanField(
+        source="site.subscriptions_enabled", read_only=True
+    )
+
+    # Null until the post is published on a blog with subscriptions on, and
+    # null forever if the writer unticked "email subscribers". The editor
+    # renders nothing in that case rather than an empty panel.
+    email_delivery = PostEmailSummarySerializer(source="email", read_only=True)
 
     class Meta:
         model = Post
@@ -83,6 +119,11 @@ class PostSerializer(serializers.ModelSerializer):
             "published_at",
             "created_at",
             "updated_at",
+            "site_subscriptions_enabled",
+            "email_delivery",
+            # Write-only, so it is accepted on the way in and never appears
+            # in a response. See the block above create().
+            "notify_subscribers",
         ]
         # slug and published_at are derived in Post.save(), never client-set.
         # author comes from the session in perform_create().
@@ -110,6 +151,58 @@ class PostSerializer(serializers.ModelSerializer):
         if not value.strip():
             raise serializers.ValidationError("A post needs a title.")
         return value.strip()
+
+    # ------------------------------------------------------------------ #
+    # Notifying subscribers
+    #
+    # The trigger is the *transition* draft → published, not the value of
+    # `status`. That distinction is the whole thing: PATCH is also the
+    # dashboard's autosave endpoint, so a post that is already published
+    # gets `status: "published"` sent with it every few seconds. Acting on
+    # the value would mail the blog's subscribers once per keystroke.
+    #
+    # It lives here rather than in Post.save() deliberately. That method
+    # already derives the slug, the excerpt and published_at, and burying
+    # a queue write in it would mean every fixture, every seed command and
+    # every test that publishes a post also queued mail. A serializer is
+    # the layer where "somebody asked for this" is actually known.
+    # ------------------------------------------------------------------ #
+
+    notify_subscribers = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=True,
+        help_text="Whether publishing this post should mail the blog's "
+        "subscribers. Ignored unless this request publishes it.",
+    )
+
+    def create(self, validated_data):
+        notify = validated_data.pop("notify_subscribers", True)
+        post = super().create(validated_data)
+
+        # A post can be created already published — "publish" on a post
+        # that was never saved as a draft.
+        if post.is_published and notify:
+            schedule_post_email(post)
+
+        return post
+
+    def update(self, instance, validated_data):
+        notify = validated_data.pop("notify_subscribers", True)
+        was_published = instance.is_published
+
+        post = super().update(instance, validated_data)
+
+        if post.is_published and not was_published:
+            if notify:
+                schedule_post_email(post)
+        elif was_published and not post.is_published:
+            # Back to draft inside the delay window: drop the queued row so
+            # nothing goes out. Does nothing once the mail has been sent,
+            # which is the point of there being a window at all.
+            cancel_post_email(post)
+
+        return post
 
 
 class PostListSerializer(serializers.ModelSerializer):
@@ -147,5 +240,35 @@ class PostListSerializer(serializers.ModelSerializer):
             "published_at",
             "created_at",
             "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class SubscriberSerializer(serializers.ModelSerializer):
+    """
+    One subscriber, as the writer who owns the list sees them.
+
+    **`unsubscribe_token` is not here and must never be.** It is a working
+    credential: anybody holding it can end that subscription without being
+    logged in as anyone, which is exactly what an unsubscribe link in a
+    two-year-old email has to be able to do. Putting it in a list endpoint
+    would publish one per row, and putting it in the CSV export would write
+    them all to a file that gets emailed around.
+
+    That is also why this lists its fields rather than using `exclude`: a
+    column added to Subscriber later must not appear here by default.
+    """
+
+    class Meta:
+        model = Subscriber
+        fields = [
+            "id",
+            "site",
+            "email",
+            "status",
+            "source",
+            "created_at",
+            "confirmed_at",
+            "unsubscribed_at",
         ]
         read_only_fields = fields

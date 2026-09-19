@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BlogShell } from "@/components/public/blog-shell";
 import { PostFeed } from "@/components/public/post-feed";
+import { SubscribeForm } from "@/components/public/subscribe-form";
 import {
   getPublicSite,
   listPublicPosts,
@@ -104,6 +105,20 @@ export default async function BlogIndexPage({
       ) : (
         <PostFeed siteSlug={site.slug} posts={visible} />
       )}
+
+      {/*
+        At the foot of the index rather than above the feed. A reader who
+        has not yet seen anything the writer wrote has no reason to want
+        more of it by email, and a sign-up box between them and the first
+        post is the thing people close the tab over.
+
+        Rendered only when the writer switched subscriptions on — and the
+        endpoint 404s in that case too, so this is a courtesy rather than
+        the check that enforces it.
+      */}
+      {site.subscriptions_enabled ? (
+        <SubscribeForm siteSlug={site.slug} source="index" className="mt-16" />
+      ) : null}
     </BlogShell>
   );
 }

@@ -326,6 +326,8 @@ export function SettingsPanel() {
 
               <PublicProfileSection />
 
+              <SubscriptionsSection />
+
               <section className="rounded-2xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
                 <h2 className="font-display text-xl">Your public profile</h2>
                 <p className="mt-1 text-[0.875rem] text-muted-foreground">
@@ -523,6 +525,124 @@ function PublicProfileSection() {
           </div>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+/**
+ * The switch that offers readers an email subscription at all.
+ *
+ * Self-contained, like PublicProfileSection: it loads the blog itself and
+ * saves the moment the switch moves, rather than joining the main form's
+ * "Save changes" button. A switch that needs a separate save press is a
+ * switch people leave in the wrong position.
+ *
+ * Deliberately *not* framed as deleting anything when turned off. Off stops
+ * new sign-ups — the public subscribe endpoint 404s — and leaves everybody
+ * already on the list exactly where they are, so turning it off and on
+ * again is not a way to lose a mailing list.
+ */
+function SubscriptionsSection() {
+  const [site, setSite] = React.useState<Site | null>(null);
+  const [status, setStatus] = React.useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void getCurrentSite()
+      .then((loaded) => {
+        if (!cancelled) setSite(loaded);
+      })
+      .catch(() => {
+        // The panel above this one already reports a failed load, and two
+        // error banners for one outage is noise.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (status !== "saved") return;
+    const timer = window.setTimeout(() => setStatus("idle"), 2500);
+    return () => window.clearTimeout(timer);
+  }, [status]);
+
+  async function toggle(next: boolean) {
+    if (!site) return;
+
+    setStatus("saving");
+    setError(null);
+    try {
+      setSite(await updateSite(site.id, { subscriptions_enabled: next }));
+      setStatus("saved");
+    } catch (err) {
+      setStatus("idle");
+      setError(
+        err instanceof ApiError ? err.detail : "Could not save that change.",
+      );
+    }
+  }
+
+  const enabled = site?.subscriptions_enabled ?? false;
+
+  return (
+    <section className="rounded-2xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="font-display text-xl">Email subscriptions</h2>
+        <SaveStatus status={status} />
+      </div>
+      <p className="mt-1 text-[0.875rem] text-muted-foreground">
+        Let readers get an email when you publish something new.
+      </p>
+
+      {error ? (
+        <p className="mt-4 text-[0.8rem] text-destructive">{error}</p>
+      ) : null}
+
+      <div className="mt-6 flex items-start justify-between gap-6">
+        <div className="min-w-0">
+          <label
+            htmlFor="subscriptions-enabled"
+            className="block text-[0.9rem] font-medium"
+          >
+            Offer a subscription on my blog
+          </label>
+          <p
+            id="subscriptions-help"
+            className="mt-1.5 max-w-prose text-[0.8rem] leading-relaxed text-muted-foreground"
+          >
+            Adds a sign-up form to your blog and the end of every post.
+            Readers confirm by email before they are added, and every message
+            carries an unsubscribe link.
+          </p>
+        </div>
+
+        <Switch
+          id="subscriptions-enabled"
+          aria-describedby="subscriptions-help"
+          checked={enabled}
+          disabled={!site || status === "saving"}
+          onCheckedChange={(next) => void toggle(next)}
+          className="mt-0.5"
+        />
+      </div>
+
+      {enabled ? (
+        <div className="mt-5 rounded-xl bg-muted/50 p-4 ring-1 ring-border">
+          <p className="text-[0.75rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+            When you publish
+          </p>
+          <p className="mt-2 text-[0.85rem] leading-relaxed text-muted-foreground">
+            Your subscribers are emailed a short while after you press
+            Publish, not immediately — so unpublishing straight away catches
+            a mistake before anyone sees it. You can turn the email off for
+            a particular post from the editor.
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }

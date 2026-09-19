@@ -94,6 +94,17 @@ export interface PublicSite {
   appearance: Appearance;
   font_pairing: FontPairing;
   accent_hue: number | null;
+
+  /**
+   * Whether this blog offers an email subscription.
+   *
+   * Decides only whether the form is drawn. It is not a permission check:
+   * the subscribe endpoint 404s for a blog with this false, so hiding the
+   * form is a courtesy to the reader rather than the thing that stops a
+   * sign-up. Nothing here describes who has subscribed — that list is
+   * never public, at any size.
+   */
+  subscriptions_enabled: boolean;
 }
 
 /** One entry on a blog index. */

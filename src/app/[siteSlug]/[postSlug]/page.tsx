@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BlogShell } from "@/components/public/blog-shell";
 import { PostNav } from "@/components/public/post-nav";
+import { SubscribeForm } from "@/components/public/subscribe-form";
 import {
   adjacentPosts,
   formatPublishedDate,
@@ -135,6 +136,18 @@ export default async function PostPage({
       </article>
 
       <div className="max-w-[720px]">
+        {/*
+          Between the article and the navigation, which is the one place on
+          the blog where asking is fair: the reader has just finished
+          something and is deciding what to do next. Offering it before
+          they have read a word — or after they have already chosen the
+          next post — is asking at the two moments they are least likely
+          to say yes.
+        */}
+        {site.subscriptions_enabled ? (
+          <SubscribeForm siteSlug={site.slug} source="post" className="mt-16" />
+        ) : null}
+
         <PostNav siteSlug={siteSlug} newer={newer} older={older} />
       </div>
     </BlogShell>

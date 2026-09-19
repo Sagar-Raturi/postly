@@ -18,7 +18,7 @@ removed unless the owner switched it on. Removed, not blanked — see there.
 
 from rest_framework import serializers
 
-from .models import Post, Site
+from .models import Post, Site, Subscriber
 from .sanitize import clean
 
 
@@ -37,6 +37,11 @@ class PublicSiteSerializer(serializers.ModelSerializer):
     they exist for no other purpose than being read by strangers, and a
     writer fills them in knowing that. `email` is the exception, and it is
     handled in to_representation() below.
+
+    `subscriptions_enabled` is here so the blog knows whether to draw a
+    subscribe form. It says nothing about who has subscribed and reveals
+    nothing a reader could not learn by looking at the page — which is
+    exactly the test for whether a field belongs in this list.
     """
 
     # The writer's display name — never the account's id.
@@ -63,6 +68,7 @@ class PublicSiteSerializer(serializers.ModelSerializer):
             "appearance",
             "font_pairing",
             "accent_hue",
+            "subscriptions_enabled",
         ]
         read_only_fields = fields
 
@@ -131,3 +137,61 @@ class PublicPostSerializer(PublicPostListSerializer):
 
     def get_content(self, obj: Post) -> str:
         return clean(obj.content)
+
+
+class SubscribeSerializer(serializers.Serializer):
+    """
+    What the subscribe form is allowed to say.
+
+    A plain Serializer rather than a ModelSerializer, deliberately. A
+    ModelSerializer over Subscriber would accept whatever fields it found
+    there, and the two that matter — `site` and `status` — must come from
+    the URL and from the confirmation flow respectively, never from the
+    body. A reader who could post `{"status": "confirmed"}` would have
+    skipped the entire opt-in.
+    """
+
+    email = serializers.EmailField(max_length=254)
+
+    # Which form on the blog this came from. Bounded to the enum, so an
+    # unknown value is a 400 rather than a free string in the database.
+    source = serializers.ChoiceField(
+        choices=Subscriber.Source.choices,
+        required=False,
+        default=Subscriber.Source.UNKNOWN,
+    )
+
+    # Honeypot. Hidden from people by CSS and from screen readers by
+    # aria-hidden, so anything that fills it in is automated. The view
+    # does not reject those submissions — it answers exactly as it would
+    # have done and writes nothing, because a bot that is told it failed
+    # is a bot that tries again differently.
+    #
+    # Named for what a form-filler expects to see rather than
+    # "honeypot": the trap only works if it looks like a field.
+    website = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate_email(self, value: str) -> str:
+        # Lowercased here as well as in Subscriber.save(), so the view can
+        # look the row up by the same string the constraint stores.
+        return Subscriber.normalize_email(value)
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    """
+    A subscription described back to the person holding its token.
+
+    Reachable only with the unsubscribe token or a valid confirmation
+    signature, which is what makes it safe to include the address: the
+    only way to ask is to already have had the email. The blog's name is
+    here because an unsubscribe page that cannot say what it is
+    unsubscribing you from is a page nobody should click the button on.
+    """
+
+    site_name = serializers.CharField(source="site.name", read_only=True)
+    site_slug = serializers.CharField(source="site.slug", read_only=True)
+
+    class Meta:
+        model = Subscriber
+        fields = ["email", "status", "site_name", "site_slug"]
+        read_only_fields = fields

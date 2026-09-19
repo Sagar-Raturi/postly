@@ -194,6 +194,20 @@ REST_FRAMEWORK = {
         # Avatar uploads. Tight because each one costs a decode and a
         # resize, and nobody changes their picture thirty times an hour.
         "avatar": "30/hour",
+        # Subscribing to a blog. Every accepted submission turns into mail
+        # sent to an address the submitter chose, which is why this is the
+        # tightest limit on any public endpoint — an unthrottled subscribe
+        # form is a mail relay with somebody else's reputation attached.
+        # Ten an hour still covers a family or an office behind one NAT.
+        "subscribe": "10/hour",
+        # Spending a confirmation token. Bounded to stop the endpoint being
+        # used to grind signatures, generous enough that a reader forwarding
+        # themselves the link and trying twice is fine.
+        "subscription_token": "20/hour",
+        # Unsubscribing, deliberately the loosest of the three. A throttled
+        # unsubscribe is a person being told they may not leave a mailing
+        # list, which is worse than anything the limit would prevent.
+        "subscription_unsubscribe": "60/hour",
     },
 }
 
@@ -265,3 +279,58 @@ EMAIL_USE_TLS = env("EMAIL_USE_TLS")
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Postly <hello@postly.com>")
+
+# Where blog subscription mail comes from, as opposed to account mail.
+#
+# The same address as DEFAULT_FROM_EMAIL until Phase 4 splits them, and a
+# separate setting now so that split is a deployment change rather than a
+# code change. It has to be a split eventually: a newsletter and a password
+# reset sent from one domain share one reputation, so a single writer's
+# subscribers marking their posts as spam would start sending Postly's own
+# login mail to the junk folder. Phase 4 points this at mail.postly.com,
+# with its own DKIM key.
+#
+# Only the address matters here — blog/emails.py replaces the display name
+# with the blog's own, because that is the name the reader recognises.
+SUBSCRIPTION_FROM_EMAIL = env("SUBSCRIPTION_FROM_EMAIL", default=DEFAULT_FROM_EMAIL)
+
+# How long after publishing a post its subscribers are mailed.
+#
+# Not zero, and the reason is the one failure that cannot be taken back.
+# Everything else about publishing is reversible in seconds — a typo in a
+# headline, a paragraph pasted twice, the wrong post entirely — because the
+# writer unpublishes, fixes it, publishes again. The moment mail goes out,
+# none of that is true any more: it is in five hundred inboxes and no
+# correction reaches them.
+#
+# Fifteen minutes buys back that reversibility for the mistakes people
+# actually notice, which are the ones they see the instant the published
+# page loads. Unpublishing inside the window deletes the queued row and
+# nothing is sent; see cancel_post_email.
+#
+# The cost is that "publish" and "readers are told" stop being the same
+# instant. Set it to 0 for the old behaviour — the outbox still works, the
+# cron just finds the row due immediately.
+POST_EMAIL_DELAY_MINUTES = env.int("POST_EMAIL_DELAY_MINUTES", default=15)
+
+# Most notification emails one blog may send in a day.
+#
+# A blast-radius bound rather than a quota anybody is meant to feel. Every
+# blog on Postly sends from one domain and therefore shares one sending
+# reputation, so a single writer importing a bought list — or a single
+# account being taken over — can spend the whole platform's deliverability
+# in one publish. The cap turns that into "one blog's post went out over two
+# days", which is survivable.
+#
+# A send that hits the cap stops where it is and stays queued, resuming the
+# next day from the same cursor. Nobody is mailed twice and nobody is
+# skipped. Raise it once real blogs get close.
+POST_EMAIL_DAILY_CAP_PER_SITE = env.int(
+    "POST_EMAIL_DAILY_CAP_PER_SITE", default=2000
+)
+
+# Shared secret for verifying Resend's webhooks (the `whsec_…` string from
+# the provider's dashboard). No default, and an unset value refuses every
+# request rather than accepting unsigned ones — see blog/webhooks.py on why
+# the permissive alternative would let anybody unsubscribe anybody.
+RESEND_WEBHOOK_SECRET = env("RESEND_WEBHOOK_SECRET", default="")

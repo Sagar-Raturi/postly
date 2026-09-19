@@ -13,6 +13,7 @@ import {
   CloudAlert,
   Globe,
   Loader2,
+  Mail,
   Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import {
   getPost,
   updatePost,
   type Post,
+  type PostEmailSummary,
   type PostStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -52,6 +54,14 @@ export function PostEditor({ postId }: { postId: number }) {
   });
   const [saveState, setSaveState] = React.useState<SaveState>("idle");
   const [publishing, setPublishing] = React.useState(false);
+
+  // Whether publishing should also email the blog's subscribers. On by
+  // default — a writer who has turned subscriptions on has said they want
+  // their readers told, and having to opt in every time is how a list
+  // quietly stops being used. Unticking it covers the other case:
+  // republishing something old, or fixing a post nobody needs to hear
+  // about twice.
+  const [notify, setNotify] = React.useState(true);
 
   const isDirty =
     post !== null &&
@@ -169,7 +179,16 @@ export function PostEditor({ postId }: { postId: number }) {
     try {
       // Flush any pending edits in the same request so publishing never
       // captures a stale body.
-      const updated = await updatePost(postId, { ...draft, status: nextStatus });
+      //
+      // `notify_subscribers` rides along on every one of these, and the API
+      // reads it only on the draft → published transition — so unpublishing
+      // sends a value that is correctly ignored, and the autosave path
+      // below never sends one at all.
+      const updated = await updatePost(postId, {
+        ...draft,
+        status: nextStatus,
+        notify_subscribers: notify,
+      });
       setPost(updated);
       setPersisted({ title: updated.title, content: updated.content });
       setSaveState("saved");
@@ -213,6 +232,28 @@ export function PostEditor({ postId }: { postId: number }) {
         actions={
           <div className="flex items-center gap-2">
             <SaveIndicator state={saveState} dirty={isDirty} />
+
+            {/*
+              Offered only when publishing this post would actually mail
+              somebody: a draft, on a blog with subscriptions switched on.
+              An always-present checkbox would be a standing question about
+              a feature most blogs have not turned on, and on an already
+              published post it would suggest unpublishing and republishing
+              is a way to send the post again — which it is not, by design.
+            */}
+            {post && !published && post.site_subscriptions_enabled ? (
+              <label className="mr-1 hidden cursor-pointer items-center gap-2 text-[0.8rem] text-muted-foreground select-none sm:flex">
+                <input
+                  type="checkbox"
+                  checked={notify}
+                  disabled={publishing}
+                  onChange={(event) => setNotify(event.target.checked)}
+                  className="size-3.5 accent-[var(--brand)]"
+                />
+                Email subscribers
+              </label>
+            ) : null}
+
             <Button
               variant={published ? "outline" : "default"}
               className="h-9 rounded-full px-4 text-[0.85rem]"
@@ -244,6 +285,10 @@ export function PostEditor({ postId }: { postId: number }) {
             </Link>
             {post ? <StatusBadge status={post.status} /> : null}
           </div>
+
+          {post?.email_delivery ? (
+            <DeliveryNote delivery={post.email_delivery} />
+          ) : null}
 
           {!post ? (
             <div className="space-y-4 pt-6">
@@ -359,4 +404,57 @@ function SaveIndicator({
       {label || " "}
     </span>
   );
+}
+
+/**
+ * What became of this post's notification, in one line.
+ *
+ * Only rendered when there is a row to describe — a draft, or a post the
+ * writer unticked "email subscribers" for, has none, and an empty panel
+ * saying "not sent" would invite the question of whether something broke.
+ *
+ * The queued case is the one worth stating precisely. A writer who has
+ * just pressed Publish and is looking for "sent" needs to know that
+ * nothing has gone out yet *and* that this is deliberate, because the gap
+ * is the only chance they get to catch a mistake. So it gives the time,
+ * and says plainly what unpublishing would do.
+ */
+function DeliveryNote({ delivery }: { delivery: PostEmailSummary }) {
+  const text = (() => {
+    switch (delivery.status) {
+      case "pending":
+        return `Subscribers will be emailed at ${formatTime(delivery.scheduled_for)}. Unpublish before then and nothing is sent.`;
+      case "sending":
+        return "Sending to subscribers now.";
+      case "sent":
+        return `Emailed to ${delivery.sent_count.toLocaleString()} ${
+          delivery.sent_count === 1 ? "subscriber" : "subscribers"
+        }${delivery.sent_at ? ` on ${formatDateTime(delivery.sent_at)}` : ""}.`;
+      case "failed":
+        return "The email to your subscribers could not be sent. Get in touch and we will look into it.";
+    }
+  })();
+
+  return (
+    <p className="flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2 text-[0.8rem] leading-relaxed text-muted-foreground">
+      <Mail aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+      {text}
+    </p>
+  );
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString([], {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

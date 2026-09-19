@@ -1,0 +1,15 @@
+{% autoescape off %}Confirm your subscription to {{ site_name }}.
+
+Somebody — hopefully you — asked to be emailed when {{ site_name }}
+publishes something new. Confirm here and you are on the list:
+
+{{ confirm_url }}
+
+The link expires in {{ expiry_hours }} hours.
+
+If this was not you, ignore this message. Nothing has been subscribed,
+and without the link above nothing will be — you will not hear from us
+again.
+
+— Sent by Postly on behalf of {{ site_name }}
+{% endautoescape %}
