@@ -101,7 +101,7 @@ export default async function PostPage({
   const { newer, older } = adjacentPosts(posts ?? [], post.slug);
 
   return (
-    <BlogShell site={site} posts={posts ?? []}>
+    <BlogShell site={site} posts={posts ?? []} subscribeSource="post">
       <article className="max-w-[720px]">
         <header>
           <h1 className="font-blog-heading text-[30px] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[42px]">

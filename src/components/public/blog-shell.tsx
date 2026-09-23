@@ -2,6 +2,7 @@ import * as React from "react";
 import { ProfilePanel } from "@/components/public/profile-panel";
 import { PageContainer } from "@/components/public/page-container";
 import { marketingLinkProps } from "@/lib/marketing-url";
+import type { SubscribeSource } from "@/lib/subscribe-api";
 import { archiveByYear, type PublicPostSummary, type PublicSite } from "@/lib/public-api";
 
 /**
@@ -28,12 +29,17 @@ export function BlogShell({
   site,
   posts,
   activeYear,
+  subscribeSource = "index",
+  subscribeOnMobile = false,
   children,
 }: {
   site: PublicSite;
   /** Every published post — the archive counts are grouped from these. */
   posts: PublicPostSummary[];
   activeYear?: number | null;
+  /** Passed to the panel's subscribe box — see ProfilePanel. */
+  subscribeSource?: SubscribeSource;
+  subscribeOnMobile?: boolean;
   children: React.ReactNode;
 }) {
   const archive = archiveByYear(posts);
@@ -41,7 +47,13 @@ export function BlogShell({
   return (
     <PageContainer className="py-12 lg:py-12">
       <div className="lg:grid lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-16">
-        <ProfilePanel site={site} archive={archive} activeYear={activeYear} />
+        <ProfilePanel
+          site={site}
+          archive={archive}
+          activeYear={activeYear}
+          subscribeSource={subscribeSource}
+          subscribeOnMobile={subscribeOnMobile}
+        />
 
         <main className="mt-12 min-w-0 lg:mt-0">{children}</main>
       </div>

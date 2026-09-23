@@ -40,13 +40,22 @@ import {
 export function SubscribeForm({
   siteSlug,
   source,
+  variant = "section",
   className = "",
 }: {
   siteSlug: string;
   /** Which form this is, for the writer's own curiosity. */
   source: SubscribeSource;
+  /**
+   * "section" is the full-width block under a post. "panel" is the one in
+   * the profile sidebar, where the column is 300px: the button cannot sit
+   * beside the field, and the heading has to match the panel's own small
+   * uppercase labels rather than shouting over them.
+   */
+  variant?: "section" | "panel";
   className?: string;
 }) {
+  const panel = variant === "panel";
   const id = React.useId();
   const [email, setEmail] = React.useState("");
   const [honeypot, setHoneypot] = React.useState("");
@@ -94,16 +103,28 @@ export function SubscribeForm({
 
   return (
     <section className={`border-t border-border/70 pt-8 ${className}`}>
-      <h2 className="font-blog-heading text-[19px] leading-[1.3] text-foreground">
+      <h2
+        className={`font-blog-heading leading-[1.3] text-foreground ${panel ? "text-[18px]" : "text-[19px]"}`}
+      >
         Get new posts by email
       </h2>
-      <p className="mt-2 max-w-[52ch] text-[15px] leading-[1.6] text-muted-foreground">
-        One message when something new is published. Unsubscribe in one click,
-        any time.
+
+      <p
+        className={`mt-2 text-[15px] leading-[1.6] text-muted-foreground ${panel ? "" : "max-w-[52ch]"}`}
+      >
+        {panel
+          ? "One email when something new is published."
+          : "One message when something new is published. Unsubscribe in one click, any time."}
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-4">
-        <div className="flex max-w-[420px] flex-col gap-2 sm:flex-row">
+        <div
+          className={
+            panel
+              ? "flex flex-col gap-2"
+              : "flex max-w-[420px] flex-col gap-2 sm:flex-row"
+          }
+        >
           <label htmlFor={`${id}-email`} className="sr-only">
             Email address
           </label>
@@ -119,7 +140,15 @@ export function SubscribeForm({
             onChange={(event) => setEmail(event.target.value)}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${id}-error` : undefined}
-            className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-[15px] text-foreground placeholder:text-muted-foreground/70 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none aria-invalid:border-foreground/60"
+            // `flex-1` only once the row is horizontal. Stacked, the flex
+            // axis is vertical, where flex-basis:0% outranks the height
+            // property — which collapsed this field to its line box and is
+            // why it used to render a third of the button's height.
+            //
+            // 16px, not smaller: mobile Safari zooms the whole page in when
+            // a focused field's text is under 16px, and a reader who taps
+            // this lands on a blog that has jumped scale under them.
+            className={`h-11 w-full min-w-0 ${panel ? "" : "sm:flex-1"} rounded-md border border-border bg-background px-3.5 text-[16px] text-foreground placeholder:text-muted-foreground/70 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none aria-invalid:border-foreground/60`}
           />
 
           {/*
@@ -150,7 +179,7 @@ export function SubscribeForm({
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-brand px-4 text-[15px] font-medium text-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:opacity-60"
+            className={`inline-flex h-11 ${panel ? "w-full" : "shrink-0"} items-center justify-center gap-2 rounded-md bg-brand px-5 text-[16px] font-medium text-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:opacity-60`}
           >
             {submitting ? (
               <Loader2 aria-hidden className="size-4 animate-spin" />
@@ -176,7 +205,7 @@ export function SubscribeForm({
           <p
             id={`${id}-error`}
             role="alert"
-            className="mt-2 text-[13px] text-foreground"
+            className="mt-2 text-[14px] text-foreground"
           >
             {error}
           </p>

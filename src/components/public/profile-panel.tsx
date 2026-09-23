@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { SubscribeForm } from "@/components/public/subscribe-form";
+import type { SubscribeSource } from "@/lib/subscribe-api";
 import type { ArchiveYear, PublicSite } from "@/lib/public-api";
 import { initials } from "@/lib/initials";
 import { marketingLinkProps } from "@/lib/marketing-url";
@@ -21,11 +23,22 @@ export function ProfilePanel({
   site,
   archive,
   activeYear,
+  subscribeSource = "index",
+  subscribeOnMobile = false,
 }: {
   site: PublicSite;
   archive: ArchiveYear[];
   /** The year currently filtering the feed, so its row can be marked. */
   activeYear?: number | null;
+  /** Which form the panel's subscribe box reports itself as. */
+  subscribeSource?: SubscribeSource;
+  /**
+   * Whether the subscribe box also shows below `lg`, where the panel is a
+   * card above the content rather than a column beside it. True on the
+   * index, whose content is a list of links; false on a post, where it
+   * would push the headline of the thing the reader came for off-screen.
+   */
+  subscribeOnMobile?: boolean;
 }) {
   return (
     <aside
@@ -66,6 +79,25 @@ export function ProfilePanel({
           ) : null}
         </div>
       </div>
+
+      {/*
+        Directly under the name, and above About and the archive, because
+        the panel is sticky from `lg` up: anything in it is in view for as
+        long as the reader is on the page, and being first means it is in
+        view even when a long bio and a decade of archive follow it.
+
+        Rendered only when the writer switched subscriptions on — the
+        endpoint 404s otherwise, so this is a courtesy rather than the
+        check that enforces it.
+      */}
+      {site.subscriptions_enabled ? (
+        <SubscribeForm
+          siteSlug={site.slug}
+          source={subscribeSource}
+          variant="panel"
+          className={`mt-8 ${subscribeOnMobile ? "" : "hidden lg:block"}`}
+        />
+      ) : null}
 
       {/* --- lg and up: About, archive, credit ------------------------- */}
 
