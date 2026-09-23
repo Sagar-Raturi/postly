@@ -5,6 +5,16 @@
 Django==5.2.17
 djangorestframework==3.18.1
 
+# --- Serving ----------------------------------------------------------------
+# The WSGI server production runs under. `runserver` is a development tool and
+# says so itself; config/wsgi.py is the entrypoint gunicorn is pointed at.
+gunicorn==26.2.0
+# Serves STATIC_ROOT from the web process itself. Without it the admin and the
+# DRF browsable API render unstyled in production, because nothing sits in
+# front of gunicorn to serve what collectstatic wrote. Its middleware has to go
+# directly below SecurityMiddleware -- see MIDDLEWARE in config/settings/base.py.
+whitenoise==6.12.0
+
 # --- API plumbing -----------------------------------------------------------
 django-cors-headers==4.9.0
 django-filter==26.1

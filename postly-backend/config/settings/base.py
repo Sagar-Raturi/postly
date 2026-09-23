@@ -66,6 +66,11 @@ MIDDLEWARE = [
     # attached even to responses CommonMiddleware short-circuits (redirects).
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Serves STATIC_ROOT in production. Directly below SecurityMiddleware is
+    # where WhiteNoise documents it has to sit, and it is above the session
+    # and auth middleware so a request for a stylesheet short-circuits before
+    # any of the per-user work happens.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -157,7 +162,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # is answering — so an avatar on /api/public/sites/sagar/ would serialize as
 # /api/public/sites/media/avatars/x.jpg, which is nothing.
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Overridable because a deployed backend keeps this on a mounted disk rather
+# than beside the code: a container filesystem is rebuilt on every deploy, and
+# avatars stored there would disappear with it.
+MEDIA_ROOT = env("DJANGO_MEDIA_ROOT", default=BASE_DIR / "media")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

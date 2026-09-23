@@ -19,7 +19,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Container } from "@/components/site/primitives";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { EditorToolbar } from "@/components/dashboard/editor-toolbar";
 import { StatusBadge } from "@/components/dashboard/post-card";
 import {
@@ -206,7 +205,6 @@ export function PostEditor({ postId }: { postId: number }) {
   if (loadError) {
     return (
       <>
-        <DashboardHeader />
         <main className="flex flex-1 items-center justify-center py-20">
           <div className="text-center">
             <h1 className="font-display text-2xl">{loadError}</h1>
@@ -228,8 +226,29 @@ export function PostEditor({ postId }: { postId: number }) {
 
   return (
     <>
-      <DashboardHeader
-        actions={
+      {/*
+        The editor's own bar, inside the content column: the dashboard nav
+        is mounted by the layout and already names the blog, so this one
+        carries only what belongs to the post in front of the writer.
+
+        Sticky from `lg` up and not below it, because below `lg` the nav is
+        a bar at the top of the page rather than a column beside it — two
+        elements pinned to `top-0` would land on top of each other.
+      */}
+      <header className="z-30 border-b border-border bg-background/85 backdrop-blur-md lg:sticky lg:top-0">
+        <Container className="max-w-3xl">
+          <div className="flex h-14 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Link
+                href="/dashboard"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <ArrowLeft aria-hidden className="size-4" />
+                All posts
+              </Link>
+              {post ? <StatusBadge status={post.status} /> : null}
+            </div>
+
           <div className="flex items-center gap-2">
             <SaveIndicator state={saveState} dirty={isDirty} />
 
@@ -270,21 +289,12 @@ export function PostEditor({ postId }: { postId: number }) {
               {published ? "Unpublish" : "Publish"}
             </Button>
           </div>
-        }
-      />
-
-      <main className="flex-1 pb-32">
-        <Container className="max-w-3xl">
-          <div className="flex items-center justify-between gap-4 py-5">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-md text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ArrowLeft aria-hidden className="size-4" />
-              All posts
-            </Link>
-            {post ? <StatusBadge status={post.status} /> : null}
           </div>
+        </Container>
+      </header>
+
+      <main className="flex-1 pt-6 pb-32">
+        <Container className="max-w-3xl">
 
           {post?.email_delivery ? (
             <DeliveryNote delivery={post.email_delivery} />

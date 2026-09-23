@@ -1,13 +1,11 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { ArrowLeft, Download, Search } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Container } from "@/components/site/primitives";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import {
   ApiError,
   getSubscriberStats,
@@ -106,20 +104,8 @@ export function SubscribersPanel() {
 
   return (
     <>
-      <DashboardHeader />
-
-      <main className="flex-1 pb-24">
+      <main className="flex-1 py-10 pb-24 sm:py-14">
         <Container className="max-w-5xl">
-          <div className="py-5">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-md text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ArrowLeft aria-hidden className="size-4" />
-              All posts
-            </Link>
-          </div>
-
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="font-display text-3xl">Subscribers</h1>

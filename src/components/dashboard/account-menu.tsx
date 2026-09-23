@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { ChevronDown, LogOut, Settings, Users } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,16 +77,12 @@ export function AccountMenu() {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem render={<Link href="/dashboard/subscribers" />}>
-          <Users aria-hidden />
-          Subscribers
-        </DropdownMenuItem>
-
-        <DropdownMenuItem render={<Link href="/dashboard/settings" />}>
-          <Settings aria-hidden />
-          Settings
-        </DropdownMenuItem>
-
+        {/*
+          Subscribers and Settings used to be listed here, which made an
+          account menu the only way to find two screens that have nothing
+          to do with the account. They are in the dashboard nav now, so
+          this menu is back to being about who is signed in.
+        */}
         <DropdownMenuItem onClick={handleLogout} disabled={signingOut}>
           <LogOut aria-hidden />
           {signingOut ? "Signing out…" : "Log out"}

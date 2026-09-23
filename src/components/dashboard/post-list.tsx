@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FilePlus2, Loader2, PenLine, SearchX, TriangleAlert } from "lucide-react";
 import {
   AlertDialog,
@@ -16,9 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Container } from "@/components/site/primitives";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { PostCard } from "@/components/dashboard/post-card";
-import { SiteLinkChip } from "@/components/dashboard/site-link-chip";
 import {
   PostToolbar,
   type PostSort,
@@ -74,7 +72,27 @@ export function PostList() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  const [tab, setTab] = React.useState<PostTab>("all");
+  /*
+    The tab lives in the URL rather than in state, which is what makes the
+    nav's "Drafts" a real destination instead of a second control that
+    disagrees with this one. Back and forward step through the filters, and
+    a link to a filtered list survives being shared or reloaded.
+  */
+  const tabParam = useSearchParams().get("tab");
+  const tab: PostTab =
+    tabParam === "draft" || tabParam === "published" ? tabParam : "all";
+
+  const setTab = React.useCallback(
+    (next: PostTab) => {
+      // replace, not push: flipping between tabs is refining one view, and
+      // pushing would make Back walk every tab the writer tried.
+      router.replace(next === "all" ? "/dashboard" : `/dashboard?tab=${next}`, {
+        scroll: false,
+      });
+    },
+    [router],
+  );
+
   const [sort, setSort] = React.useState<PostSort>("edited");
   const [query, setQuery] = React.useState("");
 
@@ -222,22 +240,6 @@ export function PostList() {
 
   return (
     <>
-      <DashboardHeader />
-
-      {/* The site link chip: directly under the top bar, above everything
-          else, and nowhere else in the product. */}
-      <div className="border-b border-border/70 bg-muted/30">
-        <Container className="max-w-5xl">
-          <div className="flex h-14 items-center">
-            {site ? (
-              <SiteLinkChip domain={site.domain} href={`/${site.slug}`} />
-            ) : (
-              <Skeleton className="h-8 w-64 rounded-full" />
-            )}
-          </div>
-        </Container>
-      </div>
-
       <main className="flex-1 py-10 sm:py-14">
         <Container className="max-w-5xl">
           <div className="flex flex-wrap items-end justify-between gap-4">

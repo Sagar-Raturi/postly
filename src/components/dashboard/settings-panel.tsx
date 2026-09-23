@@ -1,17 +1,14 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Loader2, TriangleAlert } from "lucide-react";
+import { Check, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Container } from "@/components/site/primitives";
 import { AvatarField } from "@/components/dashboard/avatar-field";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { SiteLinkChip } from "@/components/dashboard/site-link-chip";
 import { ThemePicker } from "@/components/dashboard/theme-picker";
 import { ThemePreview } from "@/components/dashboard/theme-preview";
 import { useAuth } from "@/components/auth-provider";
@@ -129,31 +126,9 @@ export function SettingsPanel() {
 
   return (
     <>
-      <DashboardHeader />
-
-      <div className="border-b border-border/70 bg-muted/30">
-        <Container className="max-w-3xl">
-          <div className="flex h-14 items-center">
-            {site ? (
-              <SiteLinkChip domain={site.domain} href={`/${site.slug}`} />
-            ) : (
-              <Skeleton className="h-8 w-64 rounded-full" />
-            )}
-          </div>
-        </Container>
-      </div>
-
       <main className="flex-1 py-10 sm:py-14">
         <Container className="max-w-3xl">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-1.5 rounded-md text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft aria-hidden className="size-4" />
-            All posts
-          </Link>
-
-          <h1 className="mt-5 font-display text-3xl tracking-[-0.02em] sm:text-4xl">
+          <h1 className="font-display text-3xl tracking-[-0.02em] sm:text-4xl">
             Settings
           </h1>
 
