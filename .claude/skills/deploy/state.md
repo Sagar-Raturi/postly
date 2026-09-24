@@ -34,11 +34,11 @@ thing to do.
 only ever talks to the Vercel origin. CORS is no longer load-bearing;
 `CSRF_TRUSTED_ORIGINS` and `FRONTEND_URL` still are.
 
-- [ ] 5.1 Replace the three placeholder origins on Render  ← current
-- [ ] 5.2 Redeploy the backend
+- [x] 5.1 Origins on Render — `CSRF_TRUSTED_ORIGINS` + `FRONTEND_URL` set; CORS unneeded behind the proxy
+- [x] 5.2 Redeploy — `352857f` live; POST login through proxy returns Django 400 (not CSRF 403)
 
 ## Phase 6 — Smoke test the live product
-- [ ] 6.1 Log in on the Vercel URL
+- [ ] 6.1 Log in on the Vercel URL  ← current
 - [ ] 6.2 Write a post and publish it
 - [ ] 6.3 Open the public blog at `/<your-slug>`
 - [ ] 6.4 Upload an avatar in Settings

@@ -30,20 +30,10 @@ import {
  * where every line ending is a chance to lose your place.
  */
 
-/**
- * Pre-renders the posts of a blog that has already been visited. The
- * `siteSlug` half cannot be enumerated — see the note on the index page —
- * so this fills in the second segment for sites Next already knows about,
- * and anything else renders on demand and is then cached.
- */
-export async function generateStaticParams({
-  params,
-}: {
-  params: { siteSlug: string };
-}) {
-  const posts = await listPublicPosts(params.siteSlug);
-  return (posts ?? []).map((post) => ({ postSlug: post.slug }));
-}
+// No generateStaticParams, for the same reason as the index page: a child's
+// params come from its parent's, and the parent cannot list every blog. One
+// here only ever ran at build time with `siteSlug` undefined, and made the
+// build depend on reaching the API. Posts render on demand and are cached.
 
 export async function generateMetadata({
   params,
