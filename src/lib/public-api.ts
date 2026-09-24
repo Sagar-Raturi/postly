@@ -22,12 +22,41 @@ import type {
   ThemeName,
 } from "@/lib/blog-theme";
 
-const BASE_URL = (
-  // Server-rendered, so this is read in Node rather than the browser. It is
-  // still the NEXT_PUBLIC_ variable because in every environment so far the
-  // API is at the same address from both sides.
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api"
-).replace(/\/$/, "");
+/**
+ * A variable's value, or undefined when it is missing *or* empty.
+ *
+ * `??` alone is not enough: a `NEXT_PUBLIC_` variable that is declared but
+ * empty inlines as `""`, which is neither null nor undefined, so the fallback
+ * is skipped and the base URL becomes the empty string. That produced a build
+ * failure whose only symptom was `Failed to parse URL from /public/sites/…`.
+ */
+function fromEnv(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.replace(/\/+$/, "") : undefined;
+}
+
+const API_ORIGIN = fromEnv(process.env.POSTLY_API_ORIGIN);
+
+/**
+ * Where this module's fetches go. Always absolute.
+ *
+ * These run in Node, inside a Server Component, where `fetch("/public/…")`
+ * has no origin to resolve against and throws.
+ *
+ * That is why this does not simply follow `NEXT_PUBLIC_API_URL`. Deployed,
+ * that variable is the *relative* `/api`, so the browser's requests stay on
+ * this app's origin and its session cookie stays first-party — see the
+ * rewrite in `next.config.ts`. The server has no such constraint: it holds no
+ * cookies and is not subject to CORS, so it addresses the API directly rather
+ * than looping back out through our own edge and in again.
+ *
+ * Locally neither variable is set, both halves are on localhost, and the
+ * default covers it.
+ */
+const BASE_URL =
+  (API_ORIGIN ? `${API_ORIGIN}/api` : undefined) ??
+  fromEnv(process.env.NEXT_PUBLIC_API_URL) ??
+  "http://localhost:8000/api";
 
 /**
  * How long a rendered blog page may be served before Next.js re-fetches it.
