@@ -40,9 +40,9 @@ only ever talks to the Vercel origin. CORS is no longer load-bearing;
 ## Phase 6 — Smoke test the live product
 - [x] 6.1 Log in on the Vercel URL — confirmed by user; proxy + first-party cookies working
 - [x] 6.2 Write a post — first test post written
-- [ ] 6.3 Open the public blog at `/<your-slug>`  ← current
-- [ ] 6.4 Upload an avatar in Settings
-- [ ] 6.5 Subscribe form lands as *Awaiting confirmation*
+- [x] 6.3 Open the public blog — `/producttech` renders
+- [x] 6.4 Upload an avatar — stored as 512x512 JPEG after the draft() fix (`2ea41e2`); free tier: lost on next Render deploy
+- [ ] 6.5 Subscribe form lands as *Awaiting confirmation*  ← current
 - [ ] **LIVE**
 
 ## Phase 7 — Your own domain

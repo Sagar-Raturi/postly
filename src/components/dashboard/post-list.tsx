@@ -31,6 +31,7 @@ import {
   type PostListItem,
   type Site,
 } from "@/lib/api";
+import { requestBlogRefresh } from "@/lib/request-blog-refresh";
 
 /** Plain text of a post body, for the search box to match against. */
 function searchableText(post: PostListItem): string {
@@ -220,6 +221,8 @@ export function PostList() {
     setDeleting(true);
     try {
       await deletePost(pendingDelete.id);
+      // A draft was never on the blog, so deleting one changes nothing there.
+      if (pendingDelete.status === "published") requestBlogRefresh();
       setPosts((current) => current.filter((p) => p.id !== pendingDelete.id));
       setExpanded((current) => {
         const next = new Set(current);

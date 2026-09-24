@@ -29,6 +29,7 @@ import {
   type PostEmailSummary,
   type PostStatus,
 } from "@/lib/api";
+import { requestBlogRefresh } from "@/lib/request-blog-refresh";
 import { cn } from "@/lib/utils";
 
 const AUTOSAVE_DELAY_MS = 2000;
@@ -65,6 +66,10 @@ export function PostEditor({ postId }: { postId: number }) {
   const isDirty =
     post !== null &&
     (draft.title !== persisted.title || draft.content !== persisted.content);
+
+  // Only a published post's edits are visible to readers, so only those
+  // need the public blog refetched. A draft can autosave freely.
+  const isLive = post?.status === "published";
 
   const editor = useEditor({
     extensions: [
@@ -143,11 +148,12 @@ export function PostEditor({ postId }: { postId: number }) {
         await updatePost(postId, next);
         setPersisted(next);
         setSaveState("saved");
+        if (isLive) requestBlogRefresh();
       } catch {
         setSaveState("error");
       }
     },
-    [postId],
+    [postId, isLive],
   );
 
   React.useEffect(() => {
@@ -191,6 +197,7 @@ export function PostEditor({ postId }: { postId: number }) {
       setPost(updated);
       setPersisted({ title: updated.title, content: updated.content });
       setSaveState("saved");
+      requestBlogRefresh();
     } catch (err) {
       setLoadError(
         err instanceof ApiError ? err.detail : "Could not change the status.",

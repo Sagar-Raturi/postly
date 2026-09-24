@@ -53,19 +53,31 @@ const API_ORIGIN = fromEnv(process.env.POSTLY_API_ORIGIN);
  * Locally neither variable is set, both halves are on localhost, and the
  * default covers it.
  */
-const BASE_URL =
+export const BASE_URL =
   (API_ORIGIN ? `${API_ORIGIN}/api` : undefined) ??
   fromEnv(process.env.NEXT_PUBLIC_API_URL) ??
   "http://localhost:8000/api";
 
 /**
- * How long a rendered blog page may be served before Next.js re-fetches it.
+ * How long the data behind a blog page may be reused before it is refetched.
  *
- * Published posts change rarely and are read often, so this is the whole
- * performance story: a reader gets static HTML, and an edit shows up within
- * the minute.
+ * The backstop, not the main path. A writer's own change expires the cache at
+ * once through `blogTag` (see lib/blog-refresh.ts), so this only decides how
+ * long a change made *elsewhere* — the Django admin, a script — takes to show.
  */
 export const PUBLIC_REVALIDATE_SECONDS = 60;
+
+/**
+ * The cache tag on everything one blog's public pages fetch.
+ *
+ * One tag per blog rather than per post: a single edit can change the post
+ * page, its excerpt on the index, the archive counts and the neighbouring
+ * posts' newer/older links all at once, and a blog is small enough that
+ * refetching all of it is cheap.
+ */
+export function blogTag(siteSlug: string): string {
+  return `blog:${siteSlug}`;
+}
 
 /** Stops a single blog index from walking an unbounded number of pages. */
 const MAX_INDEX_PAGES = 10;
@@ -181,7 +193,7 @@ export class PublicApiError extends Error {
  * error page. A 500 is not normal and must not be quietly rendered as
  * "no such post".
  */
-async function get<T>(path: string): Promise<T | null> {
+async function get<T>(path: string, siteSlug: string): Promise<T | null> {
   let response: Response;
 
   try {
@@ -190,7 +202,7 @@ async function get<T>(path: string): Promise<T | null> {
       // No `credentials`: these pages are anonymous by definition, and
       // sending a stray cookie is how a public page accidentally starts
       // varying by viewer.
-      next: { revalidate: PUBLIC_REVALIDATE_SECONDS },
+      next: { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [blogTag(siteSlug)] },
     });
   } catch (cause) {
     throw new PublicApiError(
@@ -224,7 +236,7 @@ async function get<T>(path: string): Promise<T | null> {
  */
 export const getPublicSite = cache(
   (siteSlug: string): Promise<PublicSite | null> =>
-    get<PublicSite>(`/public/sites/${encodeURIComponent(siteSlug)}/`),
+    get<PublicSite>(`/public/sites/${encodeURIComponent(siteSlug)}/`, siteSlug),
 );
 
 /**
@@ -239,6 +251,7 @@ export const listPublicPosts = cache(
   async (siteSlug: string): Promise<PublicPostSummary[] | null> => {
     const first = await get<Paginated<PublicPostSummary>>(
       `/public/sites/${encodeURIComponent(siteSlug)}/posts/`,
+      siteSlug,
     );
     if (!first) return null;
 
@@ -249,6 +262,7 @@ export const listPublicPosts = cache(
 
       const next = await get<Paginated<PublicPostSummary>>(
         `/public/sites/${encodeURIComponent(siteSlug)}/posts/?page=${page}`,
+        siteSlug,
       );
       if (!next?.results.length) break;
 
@@ -269,6 +283,7 @@ export const getPublicPost = cache(
   (siteSlug: string, postSlug: string): Promise<PublicPost | null> =>
     get<PublicPost>(
       `/public/sites/${encodeURIComponent(siteSlug)}/posts/${encodeURIComponent(postSlug)}/`,
+      siteSlug,
     ),
 );
 

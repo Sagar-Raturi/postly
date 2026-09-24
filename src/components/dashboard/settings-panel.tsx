@@ -25,6 +25,7 @@ import {
   updateSite,
   type Site,
 } from "@/lib/api";
+import { requestBlogRefresh } from "@/lib/request-blog-refresh";
 
 /**
  * What the account menu's "Settings" opens.
@@ -115,6 +116,7 @@ export function SettingsPanel() {
       setDescription(updated.description);
       setLook(appearanceOf(updated));
       setSaved(true);
+      requestBlogRefresh();
     } catch (err) {
       setError(
         err instanceof ApiError ? err.detail : "Could not save your changes.",
@@ -390,6 +392,7 @@ function PublicProfileSection() {
       // trims the bio on its way in.
       await refresh();
       setStatus("saved");
+      requestBlogRefresh();
     } catch (err) {
       setStatus("idle");
       setError(
@@ -553,6 +556,7 @@ function SubscriptionsSection() {
     try {
       setSite(await updateSite(site.id, { subscriptions_enabled: next }));
       setStatus("saved");
+      requestBlogRefresh();
     } catch (err) {
       setStatus("idle");
       setError(

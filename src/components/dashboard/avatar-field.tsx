@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { parseApiErrors } from "@/lib/form-errors";
 import { initials } from "@/lib/initials";
+import { requestBlogRefresh } from "@/lib/request-blog-refresh";
 import {
   ACCEPTED_AVATAR_TYPES,
   MAX_AVATAR_BYTES,
@@ -58,6 +59,7 @@ export function AvatarField() {
     setError(null);
     try {
       applyUser(await uploadAvatar(file));
+      requestBlogRefresh();
     } catch (err) {
       setError(message(err, "Could not upload that image."));
     } finally {
@@ -72,6 +74,7 @@ export function AvatarField() {
     setError(null);
     try {
       applyUser(await removeAvatar());
+      requestBlogRefresh();
     } catch (err) {
       setError(message(err, "Could not remove your photo."));
     } finally {
