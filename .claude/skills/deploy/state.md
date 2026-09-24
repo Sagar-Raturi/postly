@@ -21,7 +21,7 @@ thing to do.
 ## Phase 3 — Give yourself a login
 - [x] 3.1 Create a superuser — bootstrapped via a temporary Build Command step + `ADMIN_BOOTSTRAP_PASSWORD`
 - [x] 3.2 Mark the address verified — same command wrote the allauth `EmailAddress` row
-- [ ] 3.3 (optional) `seed_sagar` — remember the known password
+- [x] 3.3 `seed_sagar` — 8 published posts live in prod. **Its password is still the one in the repo — change it**
 
 ## Phase 4 — Frontend on Vercel
 - [x] 4.1 Import the repo, Root Directory at repo root
@@ -38,9 +38,9 @@ only ever talks to the Vercel origin. CORS is no longer load-bearing;
 - [x] 5.2 Redeploy — `352857f` live; POST login through proxy returns Django 400 (not CSRF 403)
 
 ## Phase 6 — Smoke test the live product
-- [ ] 6.1 Log in on the Vercel URL  ← current
-- [ ] 6.2 Write a post and publish it
-- [ ] 6.3 Open the public blog at `/<your-slug>`
+- [x] 6.1 Log in on the Vercel URL — confirmed by user; proxy + first-party cookies working
+- [x] 6.2 Write a post — first test post written
+- [ ] 6.3 Open the public blog at `/<your-slug>`  ← current
 - [ ] 6.4 Upload an avatar in Settings
 - [ ] 6.5 Subscribe form lands as *Awaiting confirmation*
 - [ ] **LIVE**

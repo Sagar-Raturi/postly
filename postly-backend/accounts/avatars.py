@@ -42,6 +42,11 @@ MAX_SOURCE_PIXELS = 50_000_000
 # blog draws it at, so it stays sharp on a retina screen.
 AVATAR_SIZE = 512
 
+# The smallest a JPEG is decoded at, per side. Twice AVATAR_SIZE so the final
+# LANCZOS pass still has real pixels to average — the same headroom Pillow's
+# own Image.thumbnail() leaves with its default reducing_gap of 2.0.
+DRAFT_SIZE = AVATAR_SIZE * 2
+
 # Pillow's own names for the formats we accept. GIF is missing on purpose:
 # it would either animate on a page that never asked for animation, or lose
 # every frame but one without telling anyone.
@@ -90,6 +95,22 @@ def process(upload) -> ContentFile:
         width, height = image.size
         if width * height > MAX_SOURCE_PIXELS:
             raise serializers.ValidationError(TOO_BIG)
+
+        # Decode a JPEG at 1/2, 1/4 or 1/8 scale rather than in full. The
+        # decoder does this itself, so the full-size bitmap is never built.
+        #
+        # A 48MP phone photo is 137MB per copy decoded, and orientation and
+        # mode conversion below can hold two or three copies at once — on a
+        # 512MB instance that is enough to get the worker killed mid-upload,
+        # all to produce a 512px square. Decoded at 1/4 it is under 9MB.
+        #
+        # Pillow picks the largest scale that keeps *both* sides at or above
+        # DRAFT_SIZE, so the square crop in _render never runs short. A no-op
+        # for PNG and WebP, which have no reduced-size decode.
+        #
+        # After the pixel check on purpose: MAX_SOURCE_PIXELS has to judge
+        # the image the caller sent, not the smaller one decoded here.
+        image.draft(None, (DRAFT_SIZE, DRAFT_SIZE))
 
         # Only now is the bitmap allocated.
         image.load()

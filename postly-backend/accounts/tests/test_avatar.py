@@ -11,12 +11,14 @@ Three properties are load-bearing and each has its own class below:
 """
 
 from io import BytesIO
+from unittest import mock
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
-from accounts.avatars import AVATAR_SIZE, MAX_UPLOAD_BYTES
+from accounts import avatars
+from accounts.avatars import AVATAR_SIZE, DRAFT_SIZE, MAX_UPLOAD_BYTES
 
 pytestmark = pytest.mark.django_db
 
@@ -101,6 +103,56 @@ class TestUpload:
 
         assert stored(user_a).name != first_name
         assert not first.storage.exists(first_name)
+
+
+def decoded_size(upload) -> tuple[tuple[int, int], tuple[int, int]]:
+    """
+    (what the decoder produced, what was stored) for one upload.
+
+    _render receives the image straight after load(), so spying on it shows
+    the size that was actually allocated rather than just the final output.
+    """
+    with mock.patch.object(avatars, "_render", wraps=avatars._render) as spy:
+        result = avatars.process(upload)
+    return spy.call_args.args[0].size, Image.open(BytesIO(result.read())).size
+
+
+class TestReducedDecode:
+    """
+    A large JPEG is decoded at reduced scale, so an avatar upload cannot
+    exhaust a small instance's memory — see the draft() call in avatars.py.
+    """
+
+    def test_a_large_jpeg_is_never_decoded_at_full_size(self, make_image):
+        decoded, stored_size = decoded_size(make_image(size=(4096, 3072)))
+
+        # Both sides fit DRAFT_SIZE four and three times over; Pillow takes
+        # the power of two below the smaller of those, so half scale.
+        assert decoded == (2048, 1536)
+        assert stored_size == (AVATAR_SIZE, AVATAR_SIZE)
+
+    def test_the_short_side_limits_the_reduction(self, make_image):
+        """
+        A panorama is as wide as a large photo but only just tall enough.
+        Scaling it by its width would leave the square crop short of pixels.
+        """
+        decoded, stored_size = decoded_size(make_image(size=(4200, 1100)))
+
+        assert decoded == (4200, 1100)
+        assert min(decoded) >= DRAFT_SIZE
+        assert stored_size == (AVATAR_SIZE, AVATAR_SIZE)
+
+    def test_a_png_has_no_reduced_decode(self, make_image):
+        """Pillow can only scale while decoding a JPEG. Pinned so nobody
+        assumes the memory guard covers every accepted format."""
+        png = make_image(
+            size=(2048, 1536), fmt="PNG", name="art.png", content_type="image/png"
+        )
+
+        decoded, stored_size = decoded_size(png)
+
+        assert decoded == (2048, 1536)
+        assert stored_size == (AVATAR_SIZE, AVATAR_SIZE)
 
 
 class TestRejectedUploads:
