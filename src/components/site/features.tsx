@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card";
 import { Container, SectionHeading } from "@/components/site/primitives";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/reveal";
-import { FEATURES } from "@/lib/content";
+import { COMING_NEXT, FEATURES } from "@/lib/content";
 
 export function Features() {
   return (
@@ -52,8 +52,7 @@ export function Features() {
 
         <Reveal delay={0.1}>
           <p className="mt-10 text-center text-[0.9rem] text-muted-foreground">
-            Also: post scheduling, draft sharing links, image optimisation,
-            imports from Ghost, WordPress and Substack.
+            Coming next: {COMING_NEXT.join(", ")}.
           </p>
         </Reveal>
       </Container>

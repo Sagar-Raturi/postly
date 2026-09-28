@@ -1,18 +1,30 @@
 import {
-  ChartNoAxesColumn,
+  BookOpen,
   Download,
-  Globe,
   Mail,
+  Palette,
   PenLine,
-  ShieldOff,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 
+/*
+ * Every claim on the homepage lives in this file, and every claim in it is
+ * meant to be true of the product as it ships today. Anything that is only
+ * planned — custom domains, RSS, analytics, scheduling, Markdown export,
+ * paid plans — says so where it appears, or does not appear at all.
+ *
+ * The mockups in components/mockups/ are illustrations and can show made-up
+ * blogs. Numbers, quotes and "N writers use this" cannot: there are no
+ * testimonials or usage stats here until there are real ones to show.
+ */
+
+// Absolute ("/#…") rather than bare anchors so they also work from the
+// legal pages, which share the navbar and footer.
 export const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Examples", href: "#examples" },
-  { label: "Blog", href: "#blog" },
+  { label: "Features", href: "/#features" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "Examples", href: "/#examples" },
 ];
 
 export const STEPS = [
@@ -22,8 +34,8 @@ export const STEPS = [
     description:
       "Pick a name, check the address, and you have a live blog. No templates to choose, no install, no server to point at anything.",
     bullets: [
-      "yourname.postly.com, reserved the moment you type it",
-      "Sign in with email or a passkey — no password to forget",
+      "Your address is checked and reserved as you type it",
+      "An email and a password — nothing else to set up",
     ],
     url: "postly.com/new",
   },
@@ -31,10 +43,10 @@ export const STEPS = [
     number: "02",
     title: "Write in an editor that stays out of the way",
     description:
-      "Type. Paste an image and it uploads. Hit slash for anything else. Every keystroke is saved, and nothing loads while you think.",
+      "Type. Format from the toolbar or with Markdown shortcuts. Every change is saved as you go, and nothing loads while you think.",
     bullets: [
       "Markdown shortcuts, or just write — both work",
-      "Drafts sync across devices; pick up mid-sentence on your phone",
+      "Drafts live in your account, so you can pick up on any device",
     ],
     url: "postly.com/editor/writing-in-public",
   },
@@ -42,10 +54,10 @@ export const STEPS = [
     number: "03",
     title: "Publish, and it is already live",
     description:
-      "One button. Your post is online, sent to your email subscribers, and in your RSS feed before you have switched tabs.",
+      "One button. Your post is online straight away, and your email subscribers hear about it a few minutes later — long enough to unpublish if you spot a typo.",
     bullets: [
-      "Loads in under a second, on any connection",
-      "Connect yourdomain.com whenever you are ready",
+      "Pages are rendered on the server, readable before any script runs",
+      "Readers can subscribe from your blog and the end of every post",
     ],
     url: "nina.postly.com",
   },
@@ -59,82 +71,56 @@ export type Feature = {
 
 export const FEATURES: Feature[] = [
   {
-    title: "Custom domains",
+    title: "A calm, fast editor",
     description:
-      "Point your own domain at Postly with two DNS records. Certificates and renewals are handled for you.",
-    icon: Globe,
-  },
-  {
-    title: "A fast, clean editor",
-    description:
-      "Autosave on every keystroke, drag-in images, and keyboard shortcuts that match what you already know.",
+      "Autosaves as you type, with Markdown shortcuts and a toolbar for everything else. Publish or unpublish in one click.",
     icon: PenLine,
   },
   {
-    title: "Built-in analytics",
+    title: "Themes that stay readable",
     description:
-      "Privacy-first stats that show what actually got read. No cookie banner, no third-party trackers.",
-    icon: ChartNoAxesColumn,
+      "Four palettes in light and dark, three type pairings and an accent colour of your choosing — every combination keeps its contrast.",
+    icon: Palette,
   },
   {
-    title: "No ads, ever",
+    title: "Email subscribers, done properly",
     description:
-      "Readers see your writing and nothing else. We are paid by writers, so we never have to sell your audience.",
-    icon: ShieldOff,
-  },
-  {
-    title: "RSS and email subscribers",
-    description:
-      "Every post goes out by email and RSS the moment you publish. Import an existing list in one CSV.",
+      "Readers confirm by email, every message has a one-click unsubscribe, and new posts go out to your list automatically.",
     icon: Mail,
   },
   {
-    title: "Full ownership of your work",
+    title: "Built for readers",
     description:
-      "Export every post as Markdown, with images, any time you like. Your domain, your list, your words.",
+      "Server-rendered pages with proper titles and link previews. No ads, no trackers, no pop-ups asking for anything.",
+    icon: BookOpen,
+  },
+  {
+    title: "Your list is yours",
+    description:
+      "See who has subscribed, how many have confirmed, and export the whole list as CSV whenever you like.",
     icon: Download,
   },
-];
-
-export const PUBLICATIONS = [
-  "The Kindling",
-  "Northwind Review",
-  "Field Notes Weekly",
-  "Meridian Quarterly",
-  "Longform Daily",
-  "The Pressroom",
-];
-
-export const TESTIMONIALS = [
   {
-    quote:
-      "I moved four hundred posts off my old setup in an afternoon and have not thought about hosting since. That is the entire point.",
-    name: "Nina Alvarez",
-    role: "Essayist, Small Hours",
-    initials: "NA",
-  },
-  {
-    quote:
-      "The editor gets out of the way. I open a tab, write, press publish. My newsletter and my blog are finally the same thing.",
-    name: "Daniel Okafor",
-    role: "Staff engineer, Compile Time",
-    initials: "DO",
-  },
-  {
-    quote:
-      "My recipe blog loads in under a second on my mother's ancient phone. Nothing else I tried managed that.",
-    name: "Priya Raman",
-    role: "Food writer, Ginger & Salt",
-    initials: "PR",
+    title: "A profile beside your posts",
+    description:
+      "Your photo, a short bio and — only if you choose — your email address, on every page of your blog.",
+    icon: UserRound,
   },
 ];
 
-export const STATS = [
-  { value: "10,000+", label: "blogs published" },
-  { value: "50M+", label: "words written" },
-  { value: "99.9%", label: "uptime, measured monthly" },
+/** Planned, not built. Shown as "coming next", never as a feature. */
+export const COMING_NEXT = [
+  "custom domains",
+  "RSS feeds",
+  "image uploads",
+  "post scheduling",
+  "Markdown export",
 ];
 
+/**
+ * Illustrations of what a blog can look like, not real blogs. The section
+ * that shows them says so.
+ */
 export const EXAMPLE_BLOGS = [
   {
     title: "Small Hours",
@@ -178,96 +164,35 @@ export const EXAMPLE_BLOGS = [
   },
 ];
 
-export type Plan = {
-  name: string;
-  price: { monthly: number; yearly: number } | null;
-  priceNote: string;
-  tagline: string;
-  features: string[];
-  cta: string;
-  /** Where the plan's button goes. Sales plans point at contact, not signup. */
-  ctaHref: string;
-  recommended?: boolean;
-};
-
-export const PLANS: Plan[] = [
-  {
-    name: "Free",
-    price: { monthly: 0, yearly: 0 },
-    priceNote: "Free forever",
-    tagline: "Everything you need to get the first post out.",
-    features: [
-      "yourname.postly.com address",
-      "Unlimited posts and drafts",
-      "The full editor, no limits",
-      "RSS feed and up to 100 email subscribers",
-      "Basic analytics",
-    ],
-    cta: "Start writing — free",
-    ctaHref: "/signup",
-  },
-  {
-    name: "Pro",
-    price: { monthly: 8, yearly: 6 },
-    priceNote: "per month",
-    tagline: "For writers building a readership of their own.",
-    features: [
-      "Everything in Free",
-      "Your own custom domain, HTTPS included",
-      "Unlimited email subscribers",
-      "Full analytics and referrer reports",
-      "Scheduling, drafts sharing, and custom themes",
-      "No Postly badge",
-    ],
-    cta: "Start 14-day trial",
-    ctaHref: "/signup",
-    recommended: true,
-  },
-  {
-    name: "Publication",
-    price: { monthly: 24, yearly: 20 },
-    priceNote: "per month",
-    tagline: "For multi-author sites and paid newsletters.",
-    features: [
-      "Everything in Pro",
-      "Up to 10 authors with editorial review",
-      "Multiple publications on one account",
-      "Paid subscriptions via Stripe",
-      "Publishing API and webhooks",
-      "Priority support from a human",
-    ],
-    cta: "Talk to us",
-    ctaHref: "mailto:hello@postly.com",
-  },
+/**
+ * What the free plan includes — which, until paid plans exist, is
+ * everything. No limits are listed that the product does not enforce.
+ */
+export const FREE_PLAN_FEATURES = [
+  "Your own blog address",
+  "Unlimited posts and drafts",
+  "The full editor",
+  "Email subscribers, with double opt-in",
+  "Four themes, in light and dark",
+  "Export your subscriber list any time",
 ];
 
 export const FOOTER_LINKS = [
   {
     heading: "Product",
     links: [
-      { label: "Features", href: "#features" },
-      { label: "Pricing", href: "#pricing" },
-      { label: "Examples", href: "#examples" },
-      { label: "Custom domains", href: "#features" },
-      { label: "Changelog", href: "#blog" },
-    ],
-  },
-  {
-    heading: "Company",
-    links: [
-      { label: "About", href: "#" },
-      { label: "Blog", href: "#blog" },
-      { label: "Careers", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "Features", href: "/#features" },
+      { label: "Pricing", href: "/#pricing" },
+      { label: "Examples", href: "/#examples" },
+      { label: "Start writing", href: "/signup" },
     ],
   },
   {
     heading: "Legal",
     links: [
-      { label: "Privacy", href: "#" },
-      { label: "Terms", href: "#" },
-      { label: "Content policy", href: "#" },
-      { label: "Status", href: "#" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+      { label: "Content rules", href: "/terms#content" },
     ],
   },
 ];

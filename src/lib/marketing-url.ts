@@ -21,6 +21,14 @@
 export const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL || "/";
 
 /**
+ * A page on the marketing site — `/privacy`, say — addressed so it still
+ * resolves from a blog once blogs move to their own subdomains.
+ */
+export function marketingPath(path: `/${string}`): string {
+  return `${MARKETING_URL.replace(/\/+$/, "")}${path}`;
+}
+
+/**
  * Props for a credit link, so the three of them cannot drift apart.
  *
  * `target="_blank"` only when the link actually leaves this site: opening a

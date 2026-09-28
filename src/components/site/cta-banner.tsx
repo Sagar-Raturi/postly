@@ -32,8 +32,8 @@ export function CtaBanner() {
 
         <Reveal delay={0.12}>
           <p className="mx-auto mt-6 max-w-lg text-[1.05rem] leading-relaxed text-pretty text-white/65">
-            Claim your name, write the first thing, press publish. Bring a
-            custom domain across whenever you are ready — or never.
+            Claim your name, write the first thing, press publish. The theme,
+            the bio and the subscriber list can all wait until you want them.
           </p>
         </Reveal>
 
@@ -60,7 +60,7 @@ export function CtaBanner() {
 
         <Reveal delay={0.24}>
           <p className="mt-6 text-[0.82rem] text-white/45">
-            Free forever plan · No credit card · Export everything any time
+            Free to start · No credit card · No ads, ever
           </p>
         </Reveal>
       </Container>

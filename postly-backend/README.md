@@ -381,6 +381,7 @@ without an avatar gets an initials circle in their blog's accent colour.
 | `POST` | `/api/auth/logout/` | `GET` is a 405 |
 | `GET` `PATCH` | `/api/auth/user/` | current account. `PATCH` writes `display_name`, `bio`, `show_email_publicly`; `email` and `avatar` are read-only |
 | `POST` `DELETE` | `/api/auth/user/avatar/` | multipart `avatar`; both answer with the whole account |
+| `POST` | `/api/auth/user/delete/` | `password`; 204. Deletes the account, its blog, posts, subscribers and queued email, removes the avatar file and ends the session. Shares the `auth_login` throttle |
 | `POST` | `/api/auth/password/reset/` | identical response for known and unknown addresses |
 | `POST` | `/api/auth/password/reset/confirm/` | `uid`, `token`, `new_password1`, `new_password2` |
 | `POST` | `/api/auth/password/change/` | requires `old_password` |
@@ -502,6 +503,11 @@ address on **every** blog, not just the sending one: mailbox providers record
 the complaint against the shared domain. If `RESEND_WEBHOOK_SECRET` is unset
 the endpoint refuses every request — deliberately, since accepting unsigned
 calls would let anyone unsubscribe any reader.
+
+Every reader-facing message ends with the sender's postal address, which
+CAN-SPAM requires in bulk mail. It comes from `POSTLY_POSTAL_ADDRESS`, whose
+default, "New Delhi, India", is a placeholder until a real address exists.
+Account mail doesn't carry it.
 
 Reader-facing mail comes from `SUBSCRIPTION_FROM_EMAIL`, which defaults to
 `DEFAULT_FROM_EMAIL`. Before there are real subscribers it should be a

@@ -131,14 +131,18 @@ src/
                           Deliberately no Auth/ThemeProvider — see (app)/
     globals.css           palette, type scale, utilities, editor + post prose
     favicon.ico
+    not-found.tsx         404 for anything that is not a blog
+    error.tsx             error boundary below the root layout ("Try again")
+    global-error.tsx      last resort when the root layout itself fails
 
     (app)/                Postly itself. The route group adds no URL segment.
       layout.tsx          Auth + Theme providers — the boundary the blog
                           sits outside of
-      page.tsx            homepage — composes the nine sections in order
+      page.tsx            homepage — composes the sections in order
       login/ signup/ verify-email/ forgot-password/
       reset-password/[token]/ onboarding/
                           one server page each, rendering a client form
+      privacy/ terms/     the legal pages, on components/site/legal-page.tsx
       dashboard/
         page.tsx          post list
         posts/[id]/       editor (awaits `params`, then the client UI)
@@ -156,8 +160,9 @@ src/
     auth-provider.tsx     user, loading, login/logout/signup, 401 handling
     theme-provider.tsx    next-themes, for the (app) group only
     auth/                 auth-shell, field, and one component per page
-    site/                 navbar, hero, how-it-works, features, social-proof,
-                          examples, pricing, cta-banner, footer, primitives,
+    status-page.tsx       the shell for the 404 and error pages
+    site/                 navbar, hero, how-it-works, features, examples,
+                          pricing, cta-banner, footer, legal-page, primitives,
                           logo, theme-toggle
     dashboard/            dashboard-nav, account-menu, post-list, post-card,
                           post-toolbar, post-editor, editor-toolbar,
@@ -178,6 +183,7 @@ src/
     request-blog-refresh.ts  coalesces calls to the above, fire-and-forget
     blog-theme.ts         the palettes, and the only place blog colours exist
     marketing-url.ts      where the "Published with Postly" credit points
+    operator.ts           operator name, location, contact email
     form-errors.ts        DRF error bodies → per-field messages
     initials.ts, utils.ts
 ```
@@ -533,16 +539,19 @@ The step-by-step runbook and current deploy state live in
 
 ## Notes
 
-- Pricing tiers are **Free / Pro / Publication**. The brief suggested naming the
-  third tier "Custom Domain"; a custom domain reads better as a headline feature
-  of Pro than as a tier name, so it appears there instead.
-- Publication names in the logo strip and the testimonial authors are invented
-  placeholders, not real outlets or people.
-- The homepage's section links are still `#` anchors. Its calls to action are
-  not: "Log in" goes to `/login`, and every "Start writing" button — navbar,
-  hero, closing banner, and the Free and Pro plans — goes to `/signup`. The
-  Publication plan's button is a `mailto:`, since that tier is a conversation
-  rather than a self-serve signup.
+- **The homepage claims only what is built.** Pricing shows a single Free
+  plan, because there is no billing. Features that are only planned — custom
+  domains, RSS, image uploads, scheduling, Markdown export — are listed as
+  "coming next" (`COMING_NEXT` in `src/lib/content.ts`) and nowhere else. The
+  social-proof section (invented publications, testimonials and usage stats)
+  was removed, and the example blogs are labelled as illustrations.
+- Navbar and footer links are absolute (`/#features`), so they work from the
+  legal pages too. Every link on the site goes somewhere; there are no `#`
+  placeholders.
+- `/privacy` and `/terms` are plain-language drafts written from what the
+  code does. The operator name, location and contact email come from
+  `src/lib/operator.ts`, and several of those are still placeholders — see
+  "Placeholders to replace before launch" in `CLAUDE.md`.
 - `middleware.ts` raises a deprecation warning on Next 16.3 ("use `proxy`
   instead") and still works. It was left under the conventional name; renaming
   the file to `proxy.ts` and its export to `proxy` is the whole migration when

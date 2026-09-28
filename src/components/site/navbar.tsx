@@ -42,13 +42,13 @@ export function Navbar() {
     >
       <Container>
         <div className="flex h-16 items-center justify-between gap-6">
-          <a
-            href="#top"
+          <Link
+            href="/"
             className="rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <Logo />
             <span className="sr-only">Postly home</span>
-          </a>
+          </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((link) => (

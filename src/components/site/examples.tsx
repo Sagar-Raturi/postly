@@ -1,4 +1,3 @@
-import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Container, SectionHeading } from "@/components/site/primitives";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/reveal";
@@ -14,24 +13,14 @@ export function Examples() {
     >
       <Container>
         <Reveal>
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <SectionHeading
-              label="Examples"
-              title="Real blogs, running on Postly"
-              description="Four of the ten thousand. Same platform, four very different rooms."
-              className="max-w-xl"
-            />
-            <a
-              href="#"
-              className="group inline-flex shrink-0 items-center gap-1.5 text-[0.9rem] font-medium text-brand"
-            >
-              Browse the directory
-              <ArrowUpRight
-                aria-hidden
-                className="size-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-              />
-            </a>
-          </div>
+          {/* Illustrations, and labelled as such: these are not real blogs,
+              and nothing here should suggest otherwise. */}
+          <SectionHeading
+            label="Examples"
+            title="One platform, any kind of writing"
+            description="Four sketches of what a Postly blog can be — an essay blog, an engineer's notebook, a recipe box, a photo journal. Illustrations, not real sites."
+            className="max-w-xl"
+          />
         </Reveal>
 
         <Stagger
@@ -40,15 +29,12 @@ export function Examples() {
         >
           {EXAMPLE_BLOGS.map((blog) => (
             <StaggerItem key={blog.url}>
-              <a
-                href="#"
-                className="group block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background focus-visible:outline-none"
-              >
+              <div>
                 <BrowserFrame
                   url={blog.url}
                   size="sm"
                   secure={false}
-                  className="shadow-soft transition-all duration-300 group-hover:-translate-y-1.5 group-hover:shadow-lift group-hover:ring-brand/30"
+                  className="shadow-soft"
                 >
                   <BlogPreviewScreen
                     title={blog.title}
@@ -60,7 +46,7 @@ export function Examples() {
                 </BrowserFrame>
 
                 <div className="mt-3.5 flex items-center justify-between gap-3 px-0.5">
-                  <span className="truncate font-mono text-[0.72rem] text-muted-foreground transition-colors group-hover:text-brand">
+                  <span className="truncate font-mono text-[0.72rem] text-muted-foreground">
                     {blog.url}
                   </span>
                   <Badge
@@ -70,7 +56,7 @@ export function Examples() {
                     {blog.niche}
                   </Badge>
                 </div>
-              </a>
+              </div>
             </StaggerItem>
           ))}
         </Stagger>

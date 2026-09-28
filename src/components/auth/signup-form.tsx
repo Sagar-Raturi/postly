@@ -156,6 +156,13 @@ export function SignupForm() {
           {submitting ? <Loader2 aria-hidden className="animate-spin" /> : null}
           Create account
         </Button>
+
+        <p className="text-center text-[0.8rem] leading-relaxed text-pretty text-muted-foreground">
+          By creating an account you agree to the{" "}
+          <AuthLink href="/terms">Terms</AuthLink> and{" "}
+          <AuthLink href="/privacy">Privacy Policy</AuthLink>, and confirm you
+          are 18 or older.
+        </p>
       </form>
     </AuthShell>
   );

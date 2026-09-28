@@ -331,6 +331,16 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Postly <hello@postly.com
 # with the blog's own, because that is the name the reader recognises.
 SUBSCRIPTION_FROM_EMAIL = env("SUBSCRIPTION_FROM_EMAIL", default=DEFAULT_FROM_EMAIL)
 
+# The sender's postal address, printed in the footer of every message sent to
+# a blog's readers. CAN-SPAM requires a valid physical postal address in
+# commercial bulk mail, and Gmail and Yahoo weigh its absence against the
+# sender. Account mail does not carry it: a password reset is transactional.
+#
+# The default is a city, not an address, and is a placeholder until a real
+# mailing address exists (a street address, PO box or registered mail
+# service all qualify). Set it on the host before sending to real readers.
+POSTLY_POSTAL_ADDRESS = env("POSTLY_POSTAL_ADDRESS", default="New Delhi, India")
+
 # How long after publishing a post its subscribers are mailed.
 #
 # Not zero, and the reason is the one failure that cannot be taken back.

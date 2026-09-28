@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Loader2 } from "lucide-react";
+import { marketingPath } from "@/lib/marketing-url";
 import {
   SubscribeError,
   subscribe,
@@ -210,6 +211,16 @@ export function SubscribeForm({
             {error}
           </p>
         ) : null}
+
+        <p className="mt-3 text-[13px] leading-[1.6] text-muted-foreground">
+          Unsubscribe from any email in one click.{" "}
+          <a
+            href={marketingPath("/privacy")}
+            className="underline decoration-border underline-offset-[0.2em] transition-colors hover:text-foreground"
+          >
+            Privacy
+          </a>
+        </p>
       </form>
     </section>
   );

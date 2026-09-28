@@ -1,7 +1,6 @@
 import * as React from "react";
 import {
   Bold,
-  ChartNoAxesColumn,
   Check,
   ChevronDown,
   FileText,
@@ -9,7 +8,7 @@ import {
   Image as ImageIcon,
   Italic,
   Link2,
-  Mail,
+  List,
   Minus,
   PenLine,
   Quote,
@@ -47,7 +46,6 @@ const SIDEBAR_NAV = [
   { label: "Posts", icon: FileText, active: true, meta: "12" },
   { label: "Drafts", icon: PenLine, meta: "3" },
   { label: "Subscribers", icon: Users, meta: "1,942" },
-  { label: "Analytics", icon: ChartNoAxesColumn },
   { label: "Settings", icon: Settings },
 ];
 
@@ -220,7 +218,7 @@ export function ClaimNameScreen({ className }: { className?: string }) {
           Create blog
         </span>
         <p className="mt-3 text-center text-[0.62rem] text-muted-foreground">
-          Free forever. No card, no trial timer.
+          Free to start. No card needed.
         </p>
       </div>
     </div>
@@ -228,14 +226,17 @@ export function ClaimNameScreen({ className }: { className?: string }) {
 }
 
 /* ------------------------------------------------------------------ *
- * Step 2 — the editor in focus mode, slash menu open
+ * Step 2 — the editor, with the Markdown shortcuts it really has
+ *
+ * Every shortcut listed is one TipTap's StarterKit turns into formatting
+ * as you type. Do not add one here that the editor does not do.
  * ------------------------------------------------------------------ */
 
-const SLASH_ITEMS = [
-  { label: "Image", hint: "Drag in or paste", icon: ImageIcon, active: true },
-  { label: "Quote", hint: "Pull a line out", icon: Quote },
-  { label: "Divider", hint: "Break the section", icon: Minus },
-  { label: "Email-only block", hint: "Subscribers only", icon: Mail },
+const SHORTCUTS = [
+  { label: "Quote", keys: ">", icon: Quote, active: true },
+  { label: "Heading", keys: "##", icon: Heading2 },
+  { label: "Bullet list", keys: "-", icon: List },
+  { label: "Divider", keys: "---", icon: Minus },
 ];
 
 export function FocusEditorScreen({ className }: { className?: string }) {
@@ -244,7 +245,7 @@ export function FocusEditorScreen({ className }: { className?: string }) {
       <div className="mx-auto max-w-[30rem]">
         <div className="flex items-center justify-between">
           <span className="font-mono text-[0.6rem] tracking-wide text-muted-foreground/70 uppercase">
-            Focus mode
+            Draft · Saved
           </span>
           <span className="font-mono text-[0.6rem] text-muted-foreground/70">
             412 words
@@ -266,12 +267,12 @@ export function FocusEditorScreen({ className }: { className?: string }) {
             kind of attention that lets a sentence finish itself.
           </p>
           <p className="text-muted-foreground">
-            /<Caret />
+            &gt; <Caret />
           </p>
         </div>
 
         <div className="mt-1 w-56 overflow-hidden rounded-lg bg-popover p-1 shadow-lift ring-1 ring-foreground/10">
-          {SLASH_ITEMS.map(({ label, hint, icon: Icon, active }) => (
+          {SHORTCUTS.map(({ label, keys, icon: Icon, active }) => (
             <span
               key={label}
               className={cn(
@@ -284,8 +285,8 @@ export function FocusEditorScreen({ className }: { className?: string }) {
                 className="size-3.5 shrink-0 text-muted-foreground"
               />
               <span className="text-[0.68rem] font-medium">{label}</span>
-              <span className="ml-auto text-[0.58rem] text-muted-foreground/70">
-                {hint}
+              <span className="ml-auto font-mono text-[0.58rem] text-muted-foreground/70">
+                {keys}
               </span>
             </span>
           ))}

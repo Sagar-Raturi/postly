@@ -16,4 +16,5 @@ You are getting this because you confirmed a subscription to
 {{ unsubscribe_url }}
 
 Sent by Postly on behalf of {{ site_name }}.
-{% endautoescape %}
+{% if postal_address %}Postly · {{ postal_address }}
+{% endif %}{% endautoescape %}

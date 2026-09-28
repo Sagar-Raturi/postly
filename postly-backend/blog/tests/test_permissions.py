@@ -207,7 +207,10 @@ class TestOnboarding:
         assert body["available"] is True
         assert body["slug"] == "small-hours"
 
-    @pytest.mark.parametrize("slug", ["www", "api", "admin", "postly"])
+    # privacy and terms are app routes: a blog there would be shadowed.
+    @pytest.mark.parametrize(
+        "slug", ["www", "api", "admin", "postly", "privacy", "terms"]
+    )
     def test_reserved_slugs_are_refused(self, api_a, slug):
         body = api_a.get(self.SLUG_URL, {"slug": slug}).json()
         assert body["available"] is False

@@ -21,6 +21,7 @@ from allauth.account.utils import complete_signup
 from allauth.core.exceptions import ImmediateHttpResponse
 from dj_rest_auth.app_settings import api_settings
 from dj_rest_auth.views import LoginView, PasswordResetView
+from django.contrib.auth import logout
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -208,6 +209,69 @@ class AvatarView(APIView):
         # 200 with the account, not 204: the client needs the new state, and
         # a bare 204 would make it guess.
         return Response(UserSerializer(user, context={"request": request}).data)
+
+
+class DeleteAccountSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate_password(self, value):
+        if not self.context["request"].user.check_password(value):
+            raise serializers.ValidationError("That password is not right.")
+        return value
+
+
+class DeleteAccountView(APIView):
+    """
+    POST /api/auth/user/delete/ — close the signed-in writer's account.
+
+    Takes the current password. A session on its own is not enough, because
+    this is the one action nothing can undo: a laptop left open, or a
+    session cookie lifted by some other bug, should not be able to erase a
+    writer's blog, their posts and their readers' subscriptions in one
+    request. The password check also shares the login throttle, so a stolen
+    session cannot be used to guess the password here either.
+
+    POST rather than DELETE on `/api/auth/user/`: that path belongs to
+    dj-rest-auth's details view, and a DELETE with a password in its body is
+    something plenty of proxies and clients drop on the floor.
+
+    What goes, and how:
+
+    * the account row, and through `on_delete=CASCADE` every Site it owns,
+      every Post on them, every Subscriber and every queued PostEmail —
+      which also means a notification still waiting out its delay is never
+      sent;
+    * the avatar *file*, explicitly. Deleting a row does not delete the
+      file its ImageField points at, and a picture left in MEDIA_ROOT is
+      still being served at its old URL;
+    * the session, via logout(), so the response also clears the
+      `postly_auth` hint cookie on its way out (AuthHintCookieMiddleware
+      sees an anonymous request.user).
+
+    Answers 204. There is nothing left to describe.
+    """
+
+    throttle_scope = "auth_login"
+
+    @method_decorator(sensitive_post_parameters("password"))
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def post(self, request):
+        serializer = DeleteAccountSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+
+        if user.avatar:
+            user.avatar.delete(save=False)
+
+        logout(request._request)
+        user.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @require_GET
