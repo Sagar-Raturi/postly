@@ -42,19 +42,20 @@ only ever talks to the Vercel origin. CORS is no longer load-bearing;
 - [x] 6.2 Write a post — first test post written
 - [x] 6.3 Open the public blog — `/producttech` renders
 - [x] 6.4 Upload an avatar — stored as 512x512 JPEG after the draft() fix (`2ea41e2`); free tier: lost on next Render deploy
-- [ ] 6.5 Subscribe form lands as *Awaiting confirmation*  ← current
-- [ ] **LIVE**
+- [x] 6.5 Subscribe form lands as *Awaiting confirmation* — confirmed by user 2026-09-28
+- [x] **LIVE** — 2026-09-28, on the Vercel and Render URLs
 
 ## Phase 7 — Your own domain
+Waiting on the domain purchase. Until then, Phase 8 items that don't need it come first.
 - [ ] 7.1 Make the domain configurable (3 files + 3 tests)
 - [ ] 7.2 Point DNS through Cloudflare, add CAA
 - [ ] 7.3 Update every origin setting, redeploy both
 - [ ] 7.4 HSTS preload: deliberately not submitted
 
 ## Phase 8 — Before real writers arrive
-- [ ] 8.1 Add the outbox cron job
+- [ ] 8.1 Add the outbox cron job  ← current
 - [ ] 8.2 Verify a sending domain, set the mail variables
   - Mail now goes over Resend's **HTTPS API** (django-anymail) when `RESEND_API_KEY` is set — Render free blocks SMTP 25/465/587. Until a domain is verified: `DEFAULT_FROM_EMAIL=Postly <onboarding@resend.dev>`, and Resend only delivers to the Resend account's own address (so other people's signups fail).
 - [ ] 8.3 Move off the free tier, turn on backups
-- [ ] 8.4 Add CI
+- [ ] 8.4 Add CI — `.github/workflows/ci.yml` written, on branch `add-ci` (`57ab3f0`); tick once its first run is green
 - [ ] 8.5 Decide the tenant-isolation question
