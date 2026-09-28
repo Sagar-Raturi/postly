@@ -33,6 +33,8 @@ python manage.py send_pending_post_emails              # drains the subscriber-m
 pytest                                  # run from postly-backend/
 ```
 
+CI (`.github/workflows/ci.yml`) runs on every PR and push to `main`: backend `makemigrations --check` + `pytest` on Python 3.14, frontend `npm ci`, lint, `tsc --noEmit` and `npm run build` on Node 24. Run the same locally before pushing, because `main` deploys straight to production.
+
 `.claude/launch.json` has preview configs: `postly-dev` (Next), `postly-api` / `postly-api-venv` (Django). Both servers must be running for the app to work.
 
 Dev email uses the console backend — verification/reset links print in the `runserver` terminal.

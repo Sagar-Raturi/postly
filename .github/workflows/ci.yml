@@ -1,0 +1,85 @@
+# Runs on every pull request and every push to main.
+#
+# `main` deploys straight to Render and Vercel, so this is the only thing
+# between a red test and production. Pair it with branch protection on main
+# (Settings → Branches → require the "Backend" and "Frontend" checks) and a
+# failing run blocks the merge instead of just reporting after it.
+#
+# Two independent jobs, so a lint error and a failing test show up in the
+# same run rather than one hiding behind the other.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: postly-backend
+    steps:
+      - uses: actions/checkout@v5
+
+      # 3.14 because that is what Render runs (PYTHON_VERSION in the deploy
+      # runbook) and what requirements.txt is pinned against.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: postly-backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # A model change without its migration passes every test (pytest
+      # builds the schema from the models) and then fails on Render's
+      # `migrate`. This catches it here instead.
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
+
+      # No database service needed: dev settings fall back to SQLite, and no
+      # .env is needed either — every setting the tests touch has a default.
+      - name: Run tests
+        run: pytest
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Separately from the build, which type-checks too but stops at the
+      # first error; this lists them all.
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      # No API is reachable here, and none is needed: no page fetches at
+      # build time (see the generateStaticParams notes in
+      # src/app/[siteSlug]/), and lib/public-api.ts falls back to localhost
+      # when NEXT_PUBLIC_API_URL is unset.
+      - name: Build
+        run: npm run build
