@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     # address has been verified, which is what makes ACCOUNT_EMAIL_VERIFICATION
     # below actually block a login.
     "dj_rest_auth.registration",
+    # Email over HTTPS APIs rather than SMTP — see EMAIL_BACKEND below.
+    "anymail",
     # Deliberately no django.contrib.sites: allauth 65 does not need it, and
     # its Site model would sit next to blog.Site under the same name.
     # Local
@@ -278,9 +280,36 @@ REST_AUTH = {
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000").rstrip("/")
 
 # --- Email -------------------------------------------------------------------
-# dev.py swaps this for the console backend. Credentials come from the
-# environment in every real deployment.
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# Two transports, picked by whether a Resend API key is configured. dev.py
+# swaps either one for the console backend.
+#
+# With RESEND_API_KEY set, mail goes over Resend's HTTPS API, on port 443.
+# That is the production path, and not only for speed: Render's free web
+# services block outbound SMTP (25, 465 and 587), so an SMTP send from there
+# never connects at all. It sat waiting until the worker was killed, which
+# left the subscribe button spinning and signup unable to send a
+# verification link — with mandatory verification, unable to finish at all.
+#
+# Without it, SMTP, for a host that allows it or a local relay.
+RESEND_API_KEY = env("RESEND_API_KEY", default="")
+EMAIL_BACKEND = (
+    "anymail.backends.resend.EmailBackend"
+    if RESEND_API_KEY
+    else "django.core.mail.backends.smtp.EmailBackend"
+)
+
+ANYMAIL = {
+    "RESEND_API_KEY": RESEND_API_KEY,
+    # (connect, read) in seconds. Anymail's default is 30s; signup and
+    # subscribe both send inline and make a person wait on it.
+    "REQUESTS_TIMEOUT": (5, 10),
+}
+
+# Seconds before an SMTP send gives up. Django's default is to wait for ever,
+# which is how a blocked port became a request that never answered instead
+# of an error the callers already know how to handle.
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
+
 EMAIL_HOST = env("EMAIL_HOST", default="smtp.resend.com")
 EMAIL_PORT = env("EMAIL_PORT")
 EMAIL_USE_TLS = env("EMAIL_USE_TLS")

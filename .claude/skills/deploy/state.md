@@ -54,6 +54,7 @@ only ever talks to the Vercel origin. CORS is no longer load-bearing;
 ## Phase 8 — Before real writers arrive
 - [ ] 8.1 Add the outbox cron job
 - [ ] 8.2 Verify a sending domain, set the mail variables
+  - Mail now goes over Resend's **HTTPS API** (django-anymail) when `RESEND_API_KEY` is set — Render free blocks SMTP 25/465/587. Until a domain is verified: `DEFAULT_FROM_EMAIL=Postly <onboarding@resend.dev>`, and Resend only delivers to the Resend account's own address (so other people's signups fail).
 - [ ] 8.3 Move off the free tier, turn on backups
 - [ ] 8.4 Add CI
 - [ ] 8.5 Decide the tenant-isolation question

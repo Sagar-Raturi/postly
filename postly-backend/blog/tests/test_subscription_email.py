@@ -399,3 +399,32 @@ class TestHelpers:
         open_site.save(update_fields=["name"])
 
         assert from_address(open_site).startswith('"Wren, Briefly" <')
+
+
+# Gunicorn's default worker timeout. A send that can outlast it has the worker
+# killed mid-request, and the caller never gets the answer at all.
+WORKER_TIMEOUT_SECONDS = 30
+
+
+class TestSendsCannotOutlastTheRequest:
+    """
+    Signup and subscribe both send their email inside the request.
+
+    Django's SMTP default is to wait for ever, and Render's free tier blocks
+    outbound SMTP by dropping the packets rather than refusing them — so a
+    send never failed, it just waited, until gunicorn killed the worker. The
+    error handling in send_subscription_confirmation never ran, and a reader
+    who pressed Subscribe watched the button spin indefinitely.
+
+    Both transports must give up well inside the worker's own timeout, so a
+    stalled provider becomes an ordinary exception the callers already
+    handle.
+    """
+
+    def test_smtp_sends_give_up_inside_the_worker_timeout(self, settings):
+        assert settings.EMAIL_TIMEOUT is not None
+        assert settings.EMAIL_TIMEOUT < WORKER_TIMEOUT_SECONDS
+
+    def test_https_api_sends_give_up_inside_the_worker_timeout(self, settings):
+        connect, read = settings.ANYMAIL["REQUESTS_TIMEOUT"]
+        assert connect + read < WORKER_TIMEOUT_SECONDS

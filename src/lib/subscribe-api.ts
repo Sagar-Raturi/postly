@@ -59,6 +59,24 @@ const GENERIC_FAILURE = "Something went wrong. Try again in a moment.";
 const OFFLINE = "Could not reach the server. Check your connection and try again.";
 
 /**
+ * How long a reader waits before the form gives up on an answer.
+ *
+ * A healthy answer takes under a second. The API bounds its own email send
+ * at fifteen, so twenty-five is only reached when something upstream has
+ * stalled — before this limit existed, that was a button that spun for ever.
+ */
+const TIMEOUT_MS = 25_000;
+
+/**
+ * Deliberately not "that failed". The server saves the subscription before
+ * it sends the email, so a request the browser stopped waiting for has
+ * often succeeded — and resubmitting is harmless, because an address that
+ * is already waiting to confirm is the same row, not a second one.
+ */
+const SLOW =
+  "This is taking longer than it should. If no confirmation email arrives in a few minutes, try again.";
+
+/**
  * Pulls a readable sentence out of a DRF error body.
  *
  * Three shapes turn up: `{detail}` for anything raised outside a
@@ -104,9 +122,11 @@ async function call<T>(
       // signed-out reader has to be able to use — see the note on
       // authentication_classes in blog/public_views.py.
       cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (cause) {
-    throw new SubscribeError(OFFLINE, 0, { cause });
+    const timedOut = cause instanceof DOMException && cause.name === "TimeoutError";
+    throw new SubscribeError(timedOut ? SLOW : OFFLINE, 0, { cause });
   }
 
   // 204 has no body, and a proxy error page is not JSON. Neither should

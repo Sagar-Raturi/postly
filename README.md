@@ -8,14 +8,16 @@ Motion. Two independent products, served from one app:
 - **`/`** — the marketing homepage
 - **`/login`, `/signup`, `/verify-email`, `/forgot-password`,
   `/reset-password/[token]`, `/onboarding`** — the account flows
-- **`/dashboard`**, **`/dashboard/posts/[id]`**, **`/dashboard/settings`** —
-  the writing dashboard, behind a login, backed by the Django API in
-  [`postly-backend/`](postly-backend/README.md)
+- **`/dashboard`**, **`/dashboard/posts/[id]`**, **`/dashboard/settings`**,
+  **`/dashboard/subscribers`** — the writing dashboard, behind a login,
+  backed by the Django API in [`postly-backend/`](postly-backend/README.md)
 
 **Published blogs** — `src/app/[siteSlug]/`:
 
-- **`/{siteSlug}`** — a writer's blog index
+- **`/{siteSlug}`** — a writer's blog index, with the subscribe form
 - **`/{siteSlug}/{postSlug}`** — one published post
+- **`/{siteSlug}/subscription/confirm`**, **`/{siteSlug}/subscription/unsubscribe`**
+  — where the links in subscription emails land
 
 The second is not a section of the first. It has no Postly navbar, no dashboard
 chrome, no login, no `AuthProvider` and no `ThemeProvider` — which is why the
@@ -37,7 +39,8 @@ npm run lint
 Both halves need to be running — see
 [postly-backend/README.md](postly-backend/README.md) for the Django side. Its
 setup is `pip install -r requirements.txt`, `migrate`, `seed_sagar`,
-`runserver`.
+`runserver`. `.claude/launch.json` defines both as preview servers
+(`postly-dev` on :3000, `postly-api` / `postly-api-venv` on :8000).
 
 ## Seeing the seeded blog
 
@@ -139,33 +142,44 @@ src/
       dashboard/
         page.tsx          post list
         posts/[id]/       editor (awaits `params`, then the client UI)
-        settings/         blog name and description, account details
+        settings/         blog name, appearance, profile, avatar
+        subscribers/      mailing-list counts, rows and CSV export
 
     [siteSlug]/           published blogs — server-rendered, no auth, no chrome
       layout.tsx          masthead + footer; 404s an unknown blog
       page.tsx            the index: description and every published post
       [postSlug]/page.tsx one post, with generateMetadata + Open Graph
+      subscription/       confirm/ and unsubscribe/ — token pages from emails
       not-found.tsx       one page for "no such blog", "no such post", "draft"
 
   components/
     auth-provider.tsx     user, loading, login/logout/signup, 401 handling
+    theme-provider.tsx    next-themes, for the (app) group only
     auth/                 auth-shell, field, and one component per page
     site/                 navbar, hero, how-it-works, features, social-proof,
-                          examples, pricing, cta-banner, footer, primitives
-    dashboard/            dashboard-header, account-menu, site-link-chip,
-                          post-list, post-card, post-toolbar, post-editor,
-                          editor-toolbar, settings-panel, theme-picker,
-                          theme-preview
+                          examples, pricing, cta-banner, footer, primitives,
+                          logo, theme-toggle
+    dashboard/            dashboard-nav, account-menu, post-list, post-card,
+                          post-toolbar, post-editor, editor-toolbar,
+                          settings-panel, avatar-field, theme-picker,
+                          theme-preview, subscribers-panel
     public/               page-container, blog-top-bar, blog-shell,
-                          profile-panel, post-feed, post-nav
+                          profile-panel, post-feed, post-nav, subscribe-form,
+                          subscription-shell, confirm-subscription, unsubscribe
+    ui/                   shadcn/ui primitives
     mockups/              browser-frame.tsx + screens.tsx
     motion/reveal.tsx     Reveal / Stagger / StaggerItem
   lib/
     content.ts            all homepage copy and data
     api.ts                typed client for the private API — session + CSRF
     public-api.ts         typed client for /api/public — no session, no cookies
+    subscribe-api.ts      subscribe / confirm / unsubscribe, from the browser
+    blog-refresh.ts       Server Action: expire the writer's own blog cache
+    request-blog-refresh.ts  coalesces calls to the above, fire-and-forget
     blog-theme.ts         the palettes, and the only place blog colours exist
+    marketing-url.ts      where the "Published with Postly" credit points
     form-errors.ts        DRF error bodies → per-field messages
+    initials.ts, utils.ts
 ```
 
 `src/lib/content.ts` holds every string that repeats or lists — features,
@@ -233,8 +247,9 @@ answering the first bounces a signed-out visitor between `/login` and
 
 ## Dashboard
 
-`/dashboard` lists posts, `/dashboard/posts/[id]` is the editor, and
-`/dashboard/settings` is the blog's name and description. All three are client
+`/dashboard` lists posts, `/dashboard/posts/[id]` is the editor,
+`/dashboard/settings` is the blog's name, look and the writer's profile, and
+`/dashboard/subscribers` is the mailing list. All four are client
 components — this is a logged-in surface, so there is no SEO argument for
 server rendering, and the editor needs browser APIs anyway. An account with no
 blog yet is sent to `/onboarding`.
@@ -253,7 +268,7 @@ the whole set to draw the cards, so filtering it is an array operation and the
 list reacts on the keystroke. Search covers body text, not just titles — it is
 the body you remember when you cannot remember the title.
 
-**`site-link-chip.tsx` is the one place a writer's own address appears.** Not
+**The site link in `dashboard-nav.tsx` is the one place a writer's own address appears.** Not
 the marketing navbar, not the footer, not the account menu: a visitor to
 postly.com is being sold a product, and somebody's personal URL has no business
 there. The chip shows `sagar.postly.com`, which is where the blog will live,
@@ -287,13 +302,28 @@ catches a tab closed mid-edit.
 `/{siteSlug}` and `/{siteSlug}/{postSlug}` are Server Components. A reader gets
 HTML on the first byte, a crawler gets the whole article without running any
 JavaScript, and `generateMetadata` supplies per-post title, description and
-Open Graph tags. Pages are cached and revalidated every 60 seconds, so an edit
-in the dashboard is live within the minute without a rebuild.
+Open Graph tags.
 
-There is no `generateStaticParams` for `siteSlug`: that would need a list of
-every blog on Postly, and no public endpoint hands one out — it would be a
-directory of every customer. Post slugs *are* pre-rendered, per blog, once
-Next has seen that blog.
+Every public fetch is cached with a 60-second `revalidate` and tagged
+`blogTag(siteSlug)`. A dashboard change a reader could see — an autosave on a
+published post, publishing, settings, the avatar — calls
+`requestBlogRefresh()`, which runs the `refreshMyBlog()` Server Action to
+expire that tag, so the writer sees their change on the next load rather than
+up to a minute later. The 60 seconds is only the fallback.
+
+`refreshMyBlog()` takes **no arguments**, deliberately. A Server Action is a
+public POST endpoint, so accepting a slug would let anyone expire any blog's
+cache on a loop. Instead it forwards the request's own session cookie to the
+API and expires only the blogs that session owns. `requestBlogRefresh()`
+collapses calls made while one is in flight into a single follow-up, because
+Server Actions run one at a time per tab and a sleeping free-tier API can take
+the best part of a minute to answer the first.
+
+There is no `generateStaticParams`, for either segment. One for `siteSlug`
+would need a list of every blog on Postly, and no public endpoint hands one
+out — it would be a directory of every customer. And a child segment's params
+come from its parent's, so one on `[postSlug]` only ever ran at build time
+with `siteSlug` undefined. Pages render on demand and are then cached.
 
 ### Theming
 
@@ -442,11 +472,13 @@ on the switch rather than behind a Save button: the only question the
 control answers is "is my address public right now", so the honest answer
 has to be the one on screen.
 
-`avatar` is a real `ImageField` and the public API serves its URL, but
-there is **no upload endpoint yet** — it is read-only on
-`PATCH /api/auth/user/`, and the only way a picture arrives today is the
-Django admin. Everyone else gets the initials circle, which is a designed
-state rather than a gap.
+`avatar` is a real `ImageField` and the public API serves its URL. The
+writer sets it in **Settings** (`avatar-field.tsx`), which uploads straight
+away rather than waiting for Save — `POST` / `DELETE /api/auth/user/avatar/`.
+The backend crops and re-encodes every upload to a small square image
+(`postly-backend/accounts/avatars.py`), so what is stored is a few KB whatever
+was chosen. A writer without one gets the initials circle, which is a
+designed state rather than a gap.
 
 **Post bodies are rendered with `dangerouslySetInnerHTML`, and that is safe
 because of what happens on the server**, not because of anything here: the
@@ -455,6 +487,49 @@ public API cleans every body against an allowlist on its way out
 published blog shares an origin with the dashboard, so an unsanitised
 `<script>` in somebody's post would run with a reading writer's session behind
 it.
+
+## Email subscriptions
+
+Readers subscribe from a form on the blog (`public/subscribe-form.tsx`). The
+backend emails a confirmation link (double opt-in), and the
+`subscription/confirm` and `subscription/unsubscribe` pages turn the token in
+that link into an API call through `lib/subscribe-api.ts`. That client sends
+no credentials and never caches, which is why it is separate from both
+`api.ts` and `public-api.ts`.
+
+When a post is published, the backend queues one email per subscriber and a
+cron-run management command sends them after a short delay, so unpublishing
+quickly cancels the send. `/dashboard/subscribers` is read-only: counts by
+status, the list, and a CSV export. The backend README covers the sending
+side.
+
+Anything rendered inside a blog must use only the blog theme's colour
+variables (`--background`, `--foreground`, `--muted`, `--muted-foreground`,
+`--border`, `--brand`). Other Tailwind colours, like `text-destructive`,
+resolve against Postly's own palette and lose contrast on a dark blog theme.
+Emphasise an error with `text-foreground` against muted text, not red.
+
+## Deployment
+
+The frontend is on Vercel and the API on Render — two different registrable
+domains. A `Lax` session cookie is never sent on a cross-site `fetch()`, so
+`next.config.ts` proxies `/api/*` to the API. The browser only ever talks to
+this origin, which keeps every cookie first-party.
+
+| Variable | Local | Deployed |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api` | `/api` |
+| `POSTLY_API_ORIGIN` | unset | the API's origin, e.g. `https://….onrender.com` |
+| `NEXT_PUBLIC_MARKETING_URL` | unset (credit links to `/`) | the marketing domain, once it has a valid certificate |
+
+`POSTLY_API_ORIGIN` is also what `lib/public-api.ts` uses for its server-side
+fetches, which go to the API directly rather than looping back through the
+proxy. `skipTrailingSlashRedirect` and the `:path(.*)` rewrite exist because
+Django requires trailing slashes. Without them Next strips the slash, and a
+request ends in a redirect loop or a rejected POST.
+
+The step-by-step runbook and current deploy state live in
+`.claude/skills/deploy/`.
 
 ## Notes
 

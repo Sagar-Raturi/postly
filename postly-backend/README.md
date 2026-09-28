@@ -1,8 +1,10 @@
-# Postly backend — Phase 2
+# Postly backend
 
-Django + DRF API behind the Postly writing dashboard: accounts, blogs and
-posts. Phase 2 added authentication and locked the API down — every endpoint
-now requires a signed-in user and only ever returns that user's own rows.
+Django + DRF API behind Postly: accounts, blogs, posts, and per-blog email
+subscriptions. Every private endpoint requires a signed-in user and only ever
+returns that user's own rows. A small anonymous API serves published blogs and
+the subscribe flow to readers, and one webhook takes delivery events from the
+mail provider.
 
 If you are coming from Phase 1, read [MIGRATION.md](MIGRATION.md) first: the
 user model changed and the development database was reset.
@@ -117,6 +119,11 @@ so the throttling is built in.
 | `auth_signup` | 10/hour | `POST /api/auth/signup/` |
 | `auth_verify_email` | 20/hour | confirmation links |
 | `onboarding` | 60/min | slug availability, first-blog creation |
+| `dj_rest_auth` | 60/min | logout, password change, user details |
+| `avatar` | 30/hour | avatar upload and removal |
+| `subscribe` | 10/hour | `POST /api/public/sites/{slug}/subscribe/` — every accepted submission sends mail |
+| `subscription_token` | 20/hour | confirming a subscription |
+| `subscription_unsubscribe` | 60/hour | unsubscribing — deliberately the loosest |
 
 Also: Argon2 password hashing (`argon2-cffi`), `MinimumLengthValidator` raised
 to 10 characters, and reset tokens that expire after an hour
@@ -220,12 +227,18 @@ dashboard shows a connection error, Django is not up.
 pytest
 ```
 
-177 tests. Model save logic (slug generation and collisions, excerpt
+About 450 tests. Model save logic (slug generation and collisions, excerpt
 derivation, read-time rounding, publish/unpublish timestamps), every API
 endpoint (CRUD, filtering, pagination, validation errors), the auth flows
 (signup, mandatory verification, login and logout, throttling, password reset
 and change), and tenancy — that one account cannot read, edit or delete
 another's blogs and posts, and gets a 404 rather than a 403 when it tries.
+Also covered: avatar upload and resizing (`accounts/tests/test_avatar.py`), and
+the whole subscription pipeline — subscribe, confirm and unsubscribe
+(`test_subscriptions.py`, `test_subscription_email.py`), the writer's
+subscriber API (`test_subscriber_api.py`), post fan-out and its daily cap
+(`test_post_emails.py`, `test_send_caps.py`), and webhook signature checks
+(`test_webhooks.py`).
 
 `blog/tests/test_public_api.py` covers the anonymous API on its own, because
 its failure modes are different from everything else's:
@@ -274,8 +287,14 @@ a couple of minutes.
 | `GET` | `/api/public/sites/{slug}/` | blog name, slug, tagline, description; the writer's display name, bio and avatar; appearance. `email` **only** if published |
 | `GET` | `/api/public/sites/{slug}/posts/` | published posts only, paginated, newest first |
 | `GET` | `/api/public/sites/{slug}/posts/{postSlug}/` | one published post, with its body |
+| `POST` | `/api/public/sites/{slug}/subscribe/` | always 202 with the same message; 404 if the blog has subscriptions off |
+| `POST` | `/api/public/subscriptions/confirm/` | spends the token from the confirmation email |
+| `GET` `POST` | `/api/public/subscriptions/unsubscribe/` | `GET ?token=` only describes the subscription; `POST` unsubscribes (also the one-click `List-Unsubscribe-Post` target) |
 
-What holds across all three:
+The three subscription endpoints run with `authentication_classes = []`, so no
+session or CSRF is involved. They are covered in
+[Email subscriptions](#email-subscriptions) below. What holds across the
+three read endpoints:
 
 - **Drafts do not exist here.** The status filter lives in one function,
   `public_views.published_posts()`, and a draft's slug is a **404** — the same
@@ -343,10 +362,15 @@ person, and a person with two blogs is the same person. `tagline` lives on
 exist for no other purpose than being read by strangers — and all four may be
 empty, which the blog renders as a fallback rather than a gap.
 
-`avatar` is an `ImageField` served from `MEDIA_URL`, and there is **no upload
-endpoint yet**: it is read-only on `PATCH /api/auth/user/`, and the only way a
-picture arrives today is the Django admin. A writer without one gets an
-initials circle in their blog's accent colour.
+`avatar` is an `ImageField` served from `MEDIA_URL`, and is set through its
+own endpoint, `POST` / `DELETE /api/auth/user/avatar/` (multipart). It is still
+read-only on `PATCH /api/auth/user/`, which speaks JSON. `accounts/avatars.py`
+accepts JPEG, PNG or WebP up to 5MB and 50 megapixels. It fixes EXIF rotation,
+centre-crops the image to a square and re-encodes it at 512×512 at most, so
+what is stored is a few KB. Large JPEGs are decoded at reduced scale so a
+single upload fits in a small instance's memory. `config/urls.py` serves
+`/media/` directly in every environment, including production. A writer
+without an avatar gets an initials circle in their blog's accent colour.
 
 ### Auth
 
@@ -356,6 +380,7 @@ initials circle in their blog's accent colour.
 | `POST` | `/api/auth/login/` | 204 plus a session cookie; no token in the body |
 | `POST` | `/api/auth/logout/` | `GET` is a 405 |
 | `GET` `PATCH` | `/api/auth/user/` | current account. `PATCH` writes `display_name`, `bio`, `show_email_publicly`; `email` and `avatar` are read-only |
+| `POST` `DELETE` | `/api/auth/user/avatar/` | multipart `avatar`; both answer with the whole account |
 | `POST` | `/api/auth/password/reset/` | identical response for known and unknown addresses |
 | `POST` | `/api/auth/password/reset/confirm/` | `uid`, `token`, `new_password1`, `new_password2` |
 | `POST` | `/api/auth/password/change/` | requires `old_password` |
@@ -380,6 +405,9 @@ initials circle in their blog's accent colour.
 | `GET` | `/api/posts/` | `?site={id}` `?status=draft\|published` `?search=` |
 | `POST` | `/api/posts/` | `author` comes from the session |
 | `GET` `PATCH` `DELETE` | `/api/posts/{id}/` | `PATCH` is the editor's autosave |
+| `GET` | `/api/subscribers/` | read-only; `?site=` `?status=` `?search=` `?ordering=` |
+| `GET` | `/api/subscribers/stats/` | counts per status, through the same filters |
+| `GET` | `/api/subscribers/export/` | the filtered list as CSV |
 
 Notes on behaviour worth knowing:
 
@@ -415,6 +443,88 @@ Notes on behaviour worth knowing:
   `published`, cleared when it goes back to `draft`.
 - **`excerpt` is derived from `content`** when left blank, with HTML stripped
   and block boundaries turned into spaces.
+- **A post's detail payload carries `email_delivery`**, the state of its
+  subscriber email (see below), so the editor can show whether the post has
+  been mailed.
+- **Subscribers cannot be edited or deleted by the writer.** Every column
+  records something a reader did, so setting a status by hand would invent
+  consent nobody gave. A deleted row would also be silently re-added by the
+  reader's next form submission. `unsubscribe_token` is left out of every
+  payload a writer can see, because it ends a subscription without a session.
+  Exported CSV cells go through `blog/csv_safety.py`, which defuses spreadsheet
+  formula injection (an email address may legally begin with `=`).
+
+## Email subscriptions
+
+Readers can subscribe to a blog once its writer turns on
+`Site.subscriptions_enabled`. Every blog sends from one shared domain, so a
+single blog's bad list hurts delivery for everyone, including Postly's own
+password-reset mail. That is why double opt-in, unsubscribe and bounce
+handling come before any convenience feature, and why there is no bulk import.
+
+**Capture and double opt-in.** `SubscribeView` always answers 202 with the
+same message, whether the address is new, pending, already confirmed or
+suppressed, so the form cannot reveal who is on a list. A new or pending
+address gets a confirmation email (`blog/emails.py`). Resends have a
+per-address cooldown on `Subscriber.confirmation_sent_at`, on top of the
+per-IP throttle. A send failure is logged, not raised: an endpoint that
+returned a 5xx only when mail was due would reveal who is already
+subscribed. Subscriber status is one of `pending`, `confirmed`,
+`unsubscribed`, `bounced` or `complained`.
+
+**Unsubscribe.** A `GET` only reads, so a mail scanner that prefetches the
+link changes nothing. The `POST` is what unsubscribes. Every post email
+carries `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
+headers pointing at that `POST`.
+
+**Fan-out.** Publishing a post creates one `PostEmail` row, a one-to-one
+record that makes a post mailable at most once, ever. It is scheduled
+`POST_EMAIL_DELAY_MINUTES` (default 15) ahead, and unpublishing inside that
+window cancels it. Nothing in the web process sends it. A cron runs:
+
+```bash
+python manage.py send_pending_post_emails            # every minute; --limit, --dry-run
+```
+
+That command sends over one reused connection, in batches of 50, to confirmed
+subscribers only, and keeps a cursor so a crash or a re-run never mails anyone
+twice. It is safe to run concurrently with itself. Each blog is capped at
+`POST_EMAIL_DAILY_CAP_PER_SITE` (default 2000) emails a day; a send that hits
+the cap pauses and resumes the next day from the same cursor. A `PostEmail`
+moves through `pending`, `sending` and `sent`, and ends at `failed` once it
+runs out of attempts. It is not retried after that. **Without the cron,
+published posts queue mail that never goes out.**
+
+**Bounces and complaints.** `POST /api/webhooks/resend/` (`blog/webhooks.py`)
+verifies Resend's Svix-style HMAC signature by hand, with no `svix`
+dependency. On `email.bounced` or `email.complained` it suppresses that
+address on **every** blog, not just the sending one: mailbox providers record
+the complaint against the shared domain. If `RESEND_WEBHOOK_SECRET` is unset
+the endpoint refuses every request — deliberately, since accepting unsigned
+calls would let anyone unsubscribe any reader.
+
+Reader-facing mail comes from `SUBSCRIPTION_FROM_EMAIL`, which defaults to
+`DEFAULT_FROM_EMAIL`. Before there are real subscribers it should be a
+separate subdomain with its own SPF, DKIM and DMARC records. That is DNS
+work, not code; `.env.example` has the details.
+
+## Email delivery
+
+In development, `config/settings/dev.py` prints every message to the console.
+Elsewhere, setting `RESEND_API_KEY` sends mail over Resend's HTTPS API through
+`django-anymail`. Use it on Render's free tier, which blocks outbound SMTP.
+Without that key the `EMAIL_HOST*` SMTP settings apply.
+
+## Production
+
+`wsgi.py` / `asgi.py` default to `config.settings.prod`, which reads every
+value from the environment and has no fallbacks. Production runs under
+`gunicorn config.wsgi:application`. WhiteNoise serves `collectstatic` output from the
+web process, so the admin and the browsable API keep their styling. Its
+middleware has to sit directly below `SecurityMiddleware`. The frontend
+reaches this API through its own `/api` proxy (see the root README), so
+the session cookie stays first-party. The step-by-step Render runbook
+lives in `.claude/skills/deploy/` at the repo root.
 
 ## Layout
 
@@ -427,6 +537,7 @@ postly-backend/
 ├── .env.example
 ├── MIGRATION.md             the custom-user-model decision
 ├── templates/account/email/ verification and reset mail, text + HTML
+├── templates/blog/email/    subscription confirmation and new-post mail
 ├── config/
 │   ├── settings/
 │   │   ├── base.py          shared; no environment assumptions
@@ -440,6 +551,7 @@ postly-backend/
 │   ├── adapters.py          display_name on signup; links to the frontend
 │   ├── authentication.py    session auth that 401s instead of 403s
 │   ├── middleware.py        the postly_auth routing-hint cookie
+│   ├── avatars.py           validate, crop and re-encode avatar uploads
 │   ├── permissions.py       IsOwner
 │   ├── serializers.py       signup, user details, password reset
 │   ├── views.py             throttled auth endpoints
@@ -448,23 +560,28 @@ postly-backend/
 │   ├── management/commands/verification_link.py
 │   └── tests/
 └── blog/
-    ├── models.py            Site (owner), Post (author), read time
+    ├── models.py            Site, Post, Subscriber, PostEmail (the outbox)
     ├── serializers.py       list vs detail representations      ─┐ private
     ├── views.py             ViewSets, filtered by request.user   │ API
     ├── urls.py              DRF router                          ─┘
     ├── public_serializers.py  allowlist of public fields        ─┐ public
-    ├── public_views.py        AllowAny, published posts only     │ API
+    ├── public_views.py        published posts + subscribe flow   │ API
     ├── public_urls.py         /api/public/                      ─┘
+    ├── webhooks.py          Resend bounce/complaint webhook     ─┐ /api/
+    ├── webhook_urls.py                                          ─┘ webhooks/
+    ├── subscriptions.py     subscriber tokens and state changes
+    ├── emails.py            all reader-facing mail: confirm, fan-out, caps
+    ├── csv_safety.py        defuses formula injection in the CSV export
     ├── sanitize.py          allowlist HTML cleaning, on the way out
-    ├── migrations/0002_*    the four appearance columns on Site
     ├── onboarding.py        first blog, slug availability
     ├── subdomains.py        DNS rules and reserved names for slugs
-    ├── filters.py           ?site= and ?status=
+    ├── filters.py           ?site= ?status= ?search=, posts and subscribers
     ├── admin.py
     ├── management/commands/
     │   ├── seed_sagar.py    the demo blog; prose lives in _sagar_posts.py
     │   ├── seed_dummy_posts.py  numbered filler; lorem in _lorem.py
-    │   └── seed_demo_site.py
+    │   ├── seed_demo_site.py
+    │   └── send_pending_post_emails.py  the cron that drains the outbox
     └── tests/
 ```
 
@@ -497,4 +614,8 @@ generates the matching pair. There is a test pinning this
   frontend gets that slug is the only thing that changes. See the note at the
   top of `blog/public_urls.py`.
 - Multiple blogs per account (the models allow it; onboarding caps it at one)
-- Image uploads to S3 via `django-storages`; `MEDIA_ROOT` is local for now
+- Avatars on S3 via `django-storages`. `MEDIA_ROOT` is local disk for now,
+  which ties the backend to a single instance. Post body images are never
+  uploaded; the editor takes a remote URL.
+- Letting a writer unsubscribe a reader on that reader's behalf, for removal
+  requests that arrive by some other channel.

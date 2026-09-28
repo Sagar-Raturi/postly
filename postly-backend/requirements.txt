@@ -30,6 +30,12 @@ argon2-cffi==25.1.0
 # `throttle_scope`, so DRF's own ScopedRateThrottle covers brute-force
 # protection without a further dependency. See REST_FRAMEWORK in settings.
 
+# --- Email ------------------------------------------------------------------
+# Sends through Resend's HTTPS API when RESEND_API_KEY is set. A drop-in Django
+# email backend, so nothing that sends mail changes. It exists because Render's
+# free tier blocks outbound SMTP — see EMAIL_BACKEND in config/settings/base.py.
+django-anymail[resend]==15.2
+
 # --- Configuration ----------------------------------------------------------
 django-environ==0.14.0
 
