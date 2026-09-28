@@ -119,10 +119,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/** Nothing ever changes after hydration, so there is nothing to subscribe to. */
+function subscribeToNothing() {
+  return () => {};
+}
+
+/**
+ * The account, as this component is allowed to see it on this render.
+ *
+ * The server always renders signed out and loading — it has no session to
+ * ask about. The provider starts the same way, so it is tempting to assume
+ * every consumer's first client render does too. It does not: the provider
+ * hydrates with the root, runs its effect and can have the user back before
+ * a component further down has hydrated at all. The dashboard nav sits in
+ * its own Suspense boundary (it reads the query string), whose HTML streams
+ * in after the shell and is hydrated in a later, interruptible pass — on a
+ * slow first load, after `/auth/user/` has answered. The nav then hydrated
+ * with a user, rendered the account menu where the server had put nothing,
+ * and React reported a mismatch.
+ *
+ * So the answer depends on the reader, not the provider: while a component
+ * is hydrating it is told exactly what the server was told, and React
+ * re-renders it with the real account as soon as it has hydrated. A
+ * component mounted fresh on the client — after a navigation — gets the
+ * real value on its first render, with no extra pass.
+ */
 export function useAuth(): AuthContextValue {
   const context = React.useContext(AuthContext);
+  const hydrated = React.useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
+
   if (!context) {
     throw new Error("useAuth must be used inside <AuthProvider>.");
   }
-  return context;
+  return hydrated ? context : { ...context, user: null, loading: true };
 }
