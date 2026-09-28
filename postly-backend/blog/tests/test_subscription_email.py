@@ -377,6 +377,13 @@ class TestTheMessage:
     def test_the_message_states_the_expiry(self, sent):
         assert "48 hours" in sent.body
 
+    def test_both_parts_carry_the_postal_address(self, sent, settings):
+        """CAN-SPAM wants a physical address in reader mail."""
+        html, _ = sent.alternatives[0]
+
+        assert settings.POSTLY_POSTAL_ADDRESS in sent.body
+        assert settings.POSTLY_POSTAL_ADDRESS in html
+
 
 class TestHelpers:
     def test_confirmation_url_is_absolute_and_escaped(self, subscriber, settings):

@@ -44,11 +44,11 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://postly.com"),
   title: "Postly — Publish your blog in minutes. Own it for good.",
   description:
-    "Postly gives every writer a fast, beautiful blog at their own address. Custom domains, email subscribers, no code, no ads — and your words stay yours.",
+    "Postly gives every writer a fast, beautiful blog at their own address. Email subscribers, readable themes, no code, no ads — and your words stay yours.",
   openGraph: {
     title: "Postly — Publish your blog in minutes. Own it for good.",
     description:
-      "A fast, beautiful blog at your own address. Custom domains, email subscribers, no code, no ads.",
+      "A fast, beautiful blog at your own address. Email subscribers, readable themes, no code, no ads.",
     type: "website",
   },
 };

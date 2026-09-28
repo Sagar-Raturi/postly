@@ -536,6 +536,13 @@ class TestTheMessage:
         assert "Unsubscribe</a>" in html
         assert "/subscription/unsubscribe?token=" in html
 
+    def test_both_parts_carry_the_postal_address(self, sent, settings):
+        """CAN-SPAM wants a physical address in every bulk message."""
+        html, _ = sent.alternatives[0]
+
+        assert settings.POSTLY_POSTAL_ADDRESS in sent.body
+        assert settings.POSTLY_POSTAL_ADDRESS in html
+
     def test_no_unrendered_template_syntax(self, sent):
         html, _ = sent.alternatives[0]
 

@@ -40,7 +40,10 @@ Dev email uses the console backend — verification/reset links print in the `ru
 ## Frontend layout
 
 - `src/app/(app)/` — Postly itself: marketing homepage, auth flows (`login`, `signup`, `verify-email`, `forgot-password`, `reset-password/[token]`, `onboarding`), and `dashboard/` (posts, `posts/[id]` editor, `settings`, `subscribers`). Its `layout.tsx` owns `AuthProvider` + `ThemeProvider`.
+  Also `privacy/` and `terms/` (built on `components/site/legal-page.tsx`, written from what the code actually does — update them when data handling changes).
 - `src/app/[siteSlug]/` — published blogs. Server Components, **no auth, no providers, no Postly chrome** — this separation is why the product sits in the `(app)` route group. Includes `subscription/confirm` and `subscription/unsubscribe`.
+- `src/app/{not-found,error,global-error}.tsx` — root 404 and error boundaries, on `components/status-page.tsx` (needs no provider). This Next passes `retry`, not `reset`, to error boundaries. A single unknown segment is a blog slug and gets `[siteSlug]/not-found.tsx` instead.
+- **Any new top-level app route must also be added to `RESERVED_SLUGS`** in `postly-backend/blog/subdomains.py`, or a writer can claim that slug and have their blog shadowed.
 - `src/components/{auth,dashboard,public,site,ui,mockups,motion}` — `site/` is the marketing page, `public/` is the blog shell, `ui/` is shadcn.
 - `src/middleware.ts` — UX-only redirect for `/dashboard` based on the `postly_auth` hint cookie (not `sessionid`). Never put a real security check here.
 
@@ -51,11 +54,12 @@ Dev email uses the console backend — verification/reset links print in the `ru
 - `subscribe-api.ts` — browser-side subscribe/confirm/unsubscribe. No credentials, never cached.
 - `blog-refresh.ts` (Server Action) + `request-blog-refresh.ts` — expire the writer's own blog cache after dashboard edits. Takes no arguments on purpose; the session decides which blog.
 - `blog-theme.ts` — the only place blog colours exist. `content.ts` — all homepage copy.
+- `operator.ts` — operator name, location, contact email and the legal pages' "last updated" date. `marketing-url.ts` — `marketingPath()` for links from a blog back to the marketing site.
 
 ## Backend layout
 
 - `config/settings/{base,dev,prod}.py` — `manage.py` defaults to dev, wsgi/asgi to prod.
-- `accounts/` — custom `User` (email is the identifier, no username), 401-not-403 session auth, `AuthHintCookieMiddleware` (sets `postly_auth`), avatar upload/resize.
+- `accounts/` — custom `User` (email is the identifier, no username), 401-not-403 session auth, `AuthHintCookieMiddleware` (sets `postly_auth`), avatar upload/resize, and account deletion (`POST /api/auth/user/delete/` with the current password; cascades to blog, posts, subscribers and queued emails, and deletes the avatar file explicitly).
 - `blog/` — `Site`, `Post`, `Subscriber`, `PostEmail` models.
   - Private API: `views.py` / `serializers.py` / `urls.py` under `/api/`.
   - Public API: `public_views.py` / `public_serializers.py` / `public_urls.py` under `/api/public/`.
@@ -74,6 +78,21 @@ Dev email uses the console backend — verification/reset links print in the `ru
 - **Email subscriptions:** double opt-in, the unsubscribe path, `List-Unsubscribe` headers and the reserved `subscription` slug are load-bearing (shared sending reputation). No bulk-import of subscribers, no writer-side delete of subscriber rows. Mail goes via a `PostEmail` outbox drained by cron — not Celery.
 - **TipTap:** keep `immediatelyRender: false`; fetch the post keyed on `postId`, not on the editor instance. Autosave PATCHes 2s after the last change.
 - Don't import from `dj_rest_auth.registration.*` (drags in allauth socialaccount); password reset uses the custom serializer in `accounts/serializers.py`.
+- **The homepage only claims what's built.** No invented stats, testimonials or logos; planned features (custom domains, RSS, image uploads, scheduling, Markdown export, paid plans) appear only under `COMING_NEXT` in `src/lib/content.ts`. When one ships, move it from there into `FEATURES` / `FREE_PLAN_FEATURES`. Mockups in `components/mockups/` may show made-up blogs but not features that don't exist.
+
+## Placeholders to replace before launch
+
+The owner is buying a domain and email address soon. Until then these are stand-ins. When the real values exist, replace them, then update this section:
+
+| Placeholder | Current value | Where | Replace with |
+| --- | --- | --- | --- |
+| Contact email | `contact@postly.example` (reserved domain, can never receive mail) | `src/lib/operator.ts`, overridable by `NEXT_PUBLIC_CONTACT_EMAIL` on Vercel | the real mailbox. Shown in the footer, Privacy Policy and Terms |
+| Postal address in subscriber email | `New Delhi, India` (a city, not a valid CAN-SPAM address) | `POSTLY_POSTAL_ADDRESS` in `config/settings/base.py` (env var on Render) and `OPERATOR_LOCATION` in `src/lib/operator.ts` | a full postal address, PO box or mail-forwarding address. The owner will provide it |
+| Operator | `Sagar Raturi`, an individual | `OPERATOR_NAME` in `src/lib/operator.ts` | a company name if one is registered; then also revisit the Terms' governing law (India / New Delhi courts) |
+| Sending address | `hello@postly.com` default for `DEFAULT_FROM_EMAIL` | `config/settings/base.py`, env on Render | an address on the owned domain, verified in Resend (runbook 8.2) |
+| Domain | `postly.com` hard-coded | `blog/models.py` (`Site.domain`), `blog/onboarding.py`, `src/app/layout.tsx` (`metadataBase`), 3 tests, and the illustrative URLs in `src/lib/content.ts` / `components/mockups/` | the bought domain (runbook 7.1) |
+
+The legal pages were drafted without a lawyer. Have them reviewed before real users arrive, and bump `LEGAL_UPDATED` in `src/lib/operator.ts` whenever they change.
 
 ## Conventions
 

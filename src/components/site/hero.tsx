@@ -46,7 +46,7 @@ export function Hero() {
                 New
               </span>
               <span className="text-muted-foreground">
-                Custom domains now on every paid plan
+                Email subscriptions for every blog
               </span>
               <ArrowRight
                 aria-hidden
@@ -65,8 +65,8 @@ export function Hero() {
           <Rise delay={160}>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-pretty text-muted-foreground">
               Postly gives every writer a fast, beautiful blog at an address of
-              their own. Custom domains, email subscribers, and not a line of
-              code — your words stay yours.
+              their own. Email subscribers, themes that stay readable, and not
+              a line of code — your words stay yours.
             </p>
           </Rise>
 
@@ -93,11 +93,7 @@ export function Hero() {
 
           <Rise delay={300}>
             <p className="mt-5 text-[0.82rem] text-muted-foreground">
-              Free forever plan · No credit card ·{" "}
-              <span className="font-mono text-[0.78rem]">
-                yourname.postly.com
-              </span>{" "}
-              in under a minute
+              Free to start · No credit card · Live in under a minute
             </p>
           </Rise>
         </div>

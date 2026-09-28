@@ -138,6 +138,7 @@ def send_subscription_confirmation(subscriber: Subscriber) -> bool:
         "site_name": subscriber.site.name,
         "confirm_url": confirmation_url(subscriber),
         "expiry_hours": CONFIRM_MAX_AGE_SECONDS // 3600,
+        "postal_address": settings.POSTLY_POSTAL_ADDRESS,
     }
 
     try:
@@ -272,6 +273,7 @@ def build_post_message(post, subscriber: Subscriber):
         "post_excerpt": post.excerpt,
         "post_url": post_url(post),
         "unsubscribe_url": unsubscribe_url(subscriber),
+        "postal_address": settings.POSTLY_POSTAL_ADDRESS,
     }
 
     message = EmailMultiAlternatives(

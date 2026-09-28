@@ -364,7 +364,8 @@ export async function login(email: string, password: string): Promise<User> {
  * blog shows the address.
  *
  * `email` and `avatar` are read-only on this endpoint: changing an address
- * means re-verifying it, and there is no avatar upload yet.
+ * means re-verifying it, and the avatar has its own multipart endpoint
+ * (uploadAvatar, below).
  */
 export function updateCurrentUser(
   data: Partial<Pick<User, "display_name" | "bio" | "show_email_publicly">>,
@@ -377,6 +378,21 @@ export function updateCurrentUser(
 
 export function logout(): Promise<{ detail: string }> {
   return request<{ detail: string }>("/auth/logout/", { method: "POST" });
+}
+
+/**
+ * Closes the signed-in account, its blog, its posts and its subscriber
+ * list, for good. Needs the current password as well as the session.
+ *
+ * A wrong password is a 400 with a `password` field error, not a 401, so it
+ * does not trip the global "session expired" handler. On success the
+ * backend has already ended the session and cleared the `postly_auth` hint.
+ */
+export function deleteAccount(password: string): Promise<void> {
+  return request<void>("/auth/user/delete/", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
 }
 
 export function signup(data: SignupInput): Promise<{ detail: string }> {

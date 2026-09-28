@@ -3,6 +3,16 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, TriangleAlert } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,11 +30,13 @@ import {
 } from "@/lib/blog-theme";
 import {
   ApiError,
+  deleteAccount,
   getCurrentSite,
   updateCurrentUser,
   updateSite,
   type Site,
 } from "@/lib/api";
+import { parseApiErrors } from "@/lib/form-errors";
 import { requestBlogRefresh } from "@/lib/request-blog-refresh";
 
 /**
@@ -335,6 +347,8 @@ export function SettingsPanel() {
                   </div>
                 </dl>
               </section>
+
+              <DeleteAccountSection siteName={site?.name ?? null} />
             </div>
           )}
         </Container>
@@ -622,6 +636,135 @@ function SubscriptionsSection() {
           </p>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * Closing the account. The one thing on this page that cannot be undone.
+ *
+ * Two deliberate frictions, and no more. The dialog asks for the password,
+ * because the backend does — a session alone cannot erase a blog — and it
+ * spells out what goes, because "delete account" undersells it: the blog,
+ * every post and every reader's subscription go with it, and a queued
+ * email that has not gone out yet never will.
+ *
+ * On success the backend has already ended the session and cleared the
+ * `postly_auth` cookie. refresh() re-reads the account — now a tolerated
+ * 401, so null — which empties the auth state before the router leaves the
+ * dashboard, rather than a signed-in header flashing on the way out.
+ */
+function DeleteAccountSection({ siteName }: { siteName: string | null }) {
+  const router = useRouter();
+  const { refresh } = useAuth();
+  const [open, setOpen] = React.useState(false);
+  const [password, setPassword] = React.useState("");
+  const [deleting, setDeleting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  function close(next: boolean) {
+    if (deleting) return;
+    setOpen(next);
+    if (!next) {
+      setPassword("");
+      setError(null);
+    }
+  }
+
+  async function handleDelete(event: React.FormEvent) {
+    event.preventDefault();
+    if (!password || deleting) return;
+
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteAccount(password);
+      await refresh();
+      router.replace("/");
+    } catch (err) {
+      setDeleting(false);
+      const { fields, form } = parseApiErrors(
+        err,
+        "Could not delete your account. Try again.",
+      );
+      setError(fields.password ?? form);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl bg-card p-6 ring-1 ring-destructive/25 sm:p-8">
+      <h2 className="font-display text-xl">Delete your account</h2>
+      <p className="mt-1 max-w-prose text-[0.875rem] leading-relaxed text-muted-foreground">
+        Permanently removes your account, your blog
+        {siteName ? <> “{siteName}”</> : null}, every post on it and your
+        subscriber list. Your blog stops loading for readers, and your
+        subscribers are not emailed about it. This cannot be undone.
+      </p>
+
+      <Button
+        variant="destructive"
+        className="mt-6 h-10 rounded-full px-5"
+        onClick={() => setOpen(true)}
+      >
+        Delete account…
+      </Button>
+
+      <AlertDialog open={open} onOpenChange={close}>
+        <AlertDialogContent>
+          <form onSubmit={handleDelete} className="grid gap-4">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your blog, all of its posts and your subscriber list will be
+                deleted permanently. Enter your password to confirm.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="delete-password"
+                className="block text-[0.85rem] font-medium"
+              >
+                Password
+              </label>
+              <Input
+                id="delete-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? "delete-password-error" : undefined}
+                disabled={deleting}
+                className="h-10"
+              />
+              {error ? (
+                <p
+                  id="delete-password-error"
+                  role="alert"
+                  className="text-[0.8rem] font-medium text-destructive"
+                >
+                  {error}
+                </p>
+              ) : null}
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                type="submit"
+                variant="destructive"
+                disabled={!password || deleting}
+              >
+                {deleting ? (
+                  <Loader2 aria-hidden className="animate-spin" />
+                ) : null}
+                Delete everything
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
