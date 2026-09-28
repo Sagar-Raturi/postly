@@ -72,6 +72,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The PageProps / LayoutProps helpers used across src/app are not in
+      # any package: Next generates them into .next/types, and only when
+      # `next dev`, `next build` or `next typegen` runs. A fresh checkout has
+      # no .next, so without this tsc reports "Cannot find name 'PageProps'"
+      # for every route — while passing on any machine that has run dev.
+      - name: Generate route types
+        run: npx next typegen
+
       # Separately from the build, which type-checks too but stops at the
       # first error; this lists them all.
       - name: Type-check
