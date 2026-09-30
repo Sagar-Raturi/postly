@@ -26,7 +26,7 @@ export default function BlogNotFound() {
           href="/"
           className="rounded-sm font-medium text-foreground underline decoration-border underline-offset-[0.25em] transition-colors hover:text-brand hover:decoration-brand/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
         >
-          Postly
+          Codomain
         </Link>
       </p>
     </PageContainer>

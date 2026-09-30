@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { VerifyEmail } from "@/components/auth/verify-email";
 
 export const metadata: Metadata = {
-  title: "Confirm your email — Postly",
+  title: "Confirm your email — Codomain",
 };
 
 export default function VerifyEmailPage() {

@@ -1,18 +1,15 @@
 /**
- * Where the "Published with Postly" credits on a blog point.
+ * Where the "Published with Codomain" credits on a blog point.
  *
  * This is the one outbound link on somebody else's site, and it has to lead
- * somewhere that loads. `https://postly.com` is not that yet: the domain is
- * registered to someone else and serves a certificate that does not name it,
- * so a reader clicking the credit gets a full-page browser warning about an
- * insecure connection rather than a marketing page.
+ * somewhere that loads. It once pointed at `https://postly.com`, a domain
+ * the product never owned, whose certificate did not even name it.
  *
- * So the default is a relative `/`, which today reaches Postly's own
+ * The default is a relative `/`, which today reaches Codomain's own
  * homepage because a blog is served from the same origin at
- * `postly.com/{slug}`. Set NEXT_PUBLIC_MARKETING_URL once the real domain
- * exists and has a certificate.
+ * `www.codomain.in/{slug}`.
  *
- * Phase 3 note: when blogs move to `{slug}.postly.com`, a relative `/` stops
+ * Phase 3 note: when blogs move to `{slug}.codomain.blog`, a relative `/` stops
  * being right — it would land on the blog's own index instead of the
  * marketing site. That is the point at which this variable stops being
  * optional, which is why the link goes through here rather than being

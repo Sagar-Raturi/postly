@@ -3,14 +3,14 @@ Mail sent to a blog's readers, as opposed to mail sent to its writer.
 
 The account mail — verification, password reset — belongs to allauth and is
 configured in settings. This module owns the other kind: messages to people
-who have no Postly account and never will, about one writer's blog.
+who have no Codomain account and never will, about one writer's blog.
 
 Three things make that different from account mail, and each one shows up in
 the code below:
 
-* **The reader has not heard of Postly.** They typed their address into
+* **The reader has not heard of Codomain.** They typed their address into
   somebody's blog. So the message is from that blog's name, is about that
-  blog, and mentions Postly only in the footer.
+  blog, and mentions Codomain only in the footer.
 * **Nobody is waiting on an HTTP response.** A person who submits the
   subscribe form is told to check their inbox either way, so a send failure
   must not change what the API answers — see send_subscription_confirmation.
@@ -67,19 +67,16 @@ def confirmation_url(subscriber: Subscriber) -> str:
     # separators, and a token that ends the query string early is a token
     # that does not work.
     token = quote(make_confirm_token(subscriber))
-    return (
-        f"{settings.FRONTEND_URL}/{subscriber.site.slug}"
-        f"/subscription/confirm?token={token}"
-    )
+    return f"{subscriber.site.url}/subscription/confirm?token={token}"
 
 
 def from_address(site) -> str:
     """
-    The blog's name over Postly's sending address.
+    The blog's name over Codomain's sending address.
 
     The display name is the blog's because that is what the reader
     recognises — "Small Hours" in an inbox means something to them and
-    "Postly" does not. The address stays one we control, because the
+    "Codomain" does not. The address stays one we control, because the
     domain is what SPF and DKIM authenticate; putting the writer's own
     address there would fail alignment at every serious mailbox provider
     and send the message to spam.
@@ -193,7 +190,7 @@ MAX_ATTEMPTS = 3
 
 def post_url(post) -> str:
     """The published post, on the blog, for the "read it" link."""
-    return f"{settings.FRONTEND_URL}/{post.site.slug}/{post.slug}"
+    return f"{post.site.url}/{post.slug}"
 
 
 def unsubscribe_url(subscriber: Subscriber) -> str:
@@ -207,7 +204,7 @@ def unsubscribe_url(subscriber: Subscriber) -> str:
     everybody else's address.
     """
     return (
-        f"{settings.FRONTEND_URL}/{subscriber.site.slug}/subscription/unsubscribe"
+        f"{subscriber.site.url}/subscription/unsubscribe"
         f"?token={quote(subscriber.unsubscribe_token)}"
     )
 

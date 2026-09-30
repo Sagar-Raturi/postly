@@ -30,7 +30,7 @@ export function AuthShell({
             className="rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <Logo />
-            <span className="sr-only">Postly home</span>
+            <span className="sr-only">Codomain home</span>
           </Link>
         </div>
 

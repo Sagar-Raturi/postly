@@ -62,7 +62,7 @@ export function EditorScreen({ className }: { className?: string }) {
               Small Hours
             </span>
             <span className="block truncate font-mono text-[0.55rem] text-muted-foreground">
-              nina.postly.com
+              codomain.in/nina
             </span>
           </span>
           <ChevronDown aria-hidden className="size-3 text-muted-foreground/60" />
@@ -204,8 +204,8 @@ export function ClaimNameScreen({ className }: { className?: string }) {
               Your address
             </span>
             <div className="flex h-8 items-center rounded-lg bg-background px-2.5 font-mono text-[0.72rem] ring-1 ring-brand/50">
+              <span className="text-muted-foreground">codomain.in/</span>
               <span>nina</span>
-              <span className="text-muted-foreground">.postly.com</span>
               <span className="ml-auto flex items-center gap-1 font-sans text-[0.62rem] font-medium text-brand">
                 <Check aria-hidden className="size-3" />
                 Available

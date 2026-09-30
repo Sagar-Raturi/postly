@@ -6,18 +6,18 @@ environment, and the module raises ImproperlyConfigured on anything missing.
 """
 
 from .base import *  # noqa: F403
-from .base import env
+from .base import env, env_list
 
 DEBUG = False
 
 # No default — django-environ raises ImproperlyConfigured if this is unset.
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 
-ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
-CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
+CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 # Required, not optional: session auth means every unsafe request from the
 # Next.js origin is CSRF-checked against this list.
-CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
 # Assume TLS terminates at a proxy that sets X-Forwarded-Proto.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

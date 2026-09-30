@@ -315,13 +315,13 @@ class TestTheMessage:
     def test_subject_names_the_blog(self, sent, open_site):
         assert open_site.name in sent.subject
 
-    def test_from_is_the_blogs_name_over_postlys_address(self, sent, open_site):
+    def test_from_is_the_blogs_name_over_codomains_address(self, sent, open_site):
         """
-        The reader recognises the blog, not Postly — but the domain has to
+        The reader recognises the blog, not Codomain — but the domain has to
         stay one we can sign for, or the message fails DKIM alignment.
         """
         assert sent.from_email.startswith(f"{open_site.name} <")
-        assert "postly.com" in sent.from_email
+        assert "codomain.in" in sent.from_email
 
     def test_it_carries_a_plain_text_and_an_html_part(self, sent):
         """Not every reader's client renders HTML, and a text/plain part is
@@ -340,7 +340,7 @@ class TestTheMessage:
 
     def test_the_html_is_branded_as_the_blog(self, sent, open_site):
         """A reader who typed their address into somebody's blog has no
-        reason to recognise the word "Postly" at the top of a message."""
+        reason to recognise the word "Codomain" at the top of a message."""
         html, _ = sent.alternatives[0]
         assert open_site.name in html
 
@@ -395,9 +395,9 @@ class TestHelpers:
         assert ":" not in url.split("token=")[1]
 
     def test_from_address_uses_the_subscription_setting(self, open_site, settings):
-        settings.SUBSCRIPTION_FROM_EMAIL = "Postly <bulk@mail.postly.com>"
+        settings.SUBSCRIPTION_FROM_EMAIL = "Codomain <bulk@mail.codomain.in>"
 
-        assert from_address(open_site) == f"{open_site.name} <bulk@mail.postly.com>"
+        assert from_address(open_site) == f"{open_site.name} <bulk@mail.codomain.in>"
 
     def test_a_blog_name_with_a_comma_is_quoted(self, open_site, settings):
         """An unquoted comma in a display name splits the header into two

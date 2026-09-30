@@ -3,7 +3,7 @@ Serializers for the auth endpoints.
 
 Note what is *not* imported here: dj_rest_auth.registration.serializers.
 Its module scope reaches into allauth's social-login providers, which drags
-in `requests` and forces `allauth.socialaccount` into INSTALLED_APPS. Postly
+in `requests` and forces `allauth.socialaccount` into INSTALLED_APPS. Codomain
 has no social login, so SignupSerializer is written against allauth's
 adapter directly — the same three calls dj-rest-auth's own version makes.
 """
@@ -171,7 +171,7 @@ class PasswordResetSerializer(serializers.Serializer):
        Django's form signs links with Django's generator and a base64 uid.
        The link it mails is one its own confirm endpoint rejects.
     2. The link has to point at the Next.js reset page, and the mail has to
-       use Postly's templates.
+       use Codomain's templates.
 
     The response is identical whether or not the address has an account, so
     this endpoint cannot be used to find out who has signed up.

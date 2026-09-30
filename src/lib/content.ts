@@ -37,7 +37,7 @@ export const STEPS = [
       "Your address is checked and reserved as you type it",
       "An email and a password — nothing else to set up",
     ],
-    url: "postly.com/new",
+    url: "codomain.in/signup",
   },
   {
     number: "02",
@@ -48,7 +48,7 @@ export const STEPS = [
       "Markdown shortcuts, or just write — both work",
       "Drafts live in your account, so you can pick up on any device",
     ],
-    url: "postly.com/editor/writing-in-public",
+    url: "codomain.in/editor/writing-in-public",
   },
   {
     number: "03",
@@ -59,7 +59,7 @@ export const STEPS = [
       "Pages are rendered on the server, readable before any script runs",
       "Readers can subscribe from your blog and the end of every post",
     ],
-    url: "nina.postly.com",
+    url: "codomain.in/nina",
   },
 ] as const;
 
@@ -129,7 +129,7 @@ export const EXAMPLE_BLOGS = [
     excerpt:
       "In January I cancelled every alert on my phone and replaced them with a single rule.",
     niche: "Personal essay",
-    url: "nina.postly.com",
+    url: "codomain.in/nina",
     accent: "oklch(0.72 0.09 45)",
   },
   {
@@ -139,7 +139,7 @@ export const EXAMPLE_BLOGS = [
     excerpt:
       "Six weeks of chasing a p99 that did not exist, and what the flame graph finally showed.",
     niche: "Tech blog",
-    url: "danielo.postly.com",
+    url: "codomain.in/danielo",
     accent: "oklch(0.58 0.1 220)",
   },
   {
@@ -149,7 +149,7 @@ export const EXAMPLE_BLOGS = [
     excerpt:
       "Twenty minutes, one pot, and nothing you need to shop for on the way home.",
     niche: "Recipes",
-    url: "gingerandsalt.postly.com",
+    url: "codomain.in/gingerandsalt",
     accent: "oklch(0.68 0.12 70)",
   },
   {
@@ -159,7 +159,7 @@ export const EXAMPLE_BLOGS = [
     excerpt:
       "Ferry timetables, borrowed rain gear, and the light at four in the afternoon.",
     niche: "Photography",
-    url: "fieldreport.postly.com",
+    url: "codomain.in/fieldreport",
     accent: "oklch(0.5 0.07 160)",
   },
 ];

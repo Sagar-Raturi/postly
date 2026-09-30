@@ -60,7 +60,7 @@ Stage A — app on its own domain, mail working (blogs stay at `/<slug>`):
   - Cloudflare zone added (Free), Hostinger parking A/CNAME deleted. Assigned NS: `rene.ns.cloudflare.com`, `savanna.ns.cloudflare.com` (replacing `aurora`/`nebula.dns-parking.com`). Hostinger blocked NS changes for the first ~24h after registration; by 2026-09-30 the `.in` registry shows the Cloudflare NS, DNSSEC off. Waiting on Cloudflare to show Active
 - [x] 7.3 App domain → Vercel — two CNAMEs (`@` and `www` → `dcbaa0499d45fffd.vercel-dns-017.com`), DNS only. Verified 2026-09-30: `https://www.codomain.in` 200 with a Let's Encrypt cert, `codomain.in` 308 → www, `/sagar` 200, `/api/auth/user/` 401 through the proxy
   - Both added to the Vercel project 2026-09-30. **Main address is `www.codomain.in`**; `codomain.in` 308-redirects to it. So `FRONTEND_URL` / `CSRF_TRUSTED_ORIGINS` = `https://www.codomain.in`
-- [ ] 7.4 Make the domain configurable (code: 3 files + 3 tests)
+- [ ] 7.4 Make the domain configurable (code) — done on branch `rename-to-codomain` with the Postly → Codomain rename: `blog/addresses.py` + `BLOG_DOMAIN` (leave unset until 7.9), `metadataBase` → `https://www.codomain.in`, `env_list()` trims Render host/origin lists. Tick when merged and deployed
 - [ ] 7.5 Cloudflare Email Routing: `contact@` → Gmail
 - [ ] 7.6 Resend: verify app domain + `mail.` subdomain, DMARC, webhook
 - [ ] 7.7 Switch Render/Vercel settings, redeploy both, smoke test with a non-Resend address  ← current
@@ -73,7 +73,7 @@ Stage B — blogs on `<slug>.<blog domain>`:
 ## Phase 8 — Before real writers arrive
 - [ ] 8.1 Add the outbox cron job — independent of the domain; do alongside Phase 7
 - [ ] 8.2 Verify a sending domain, set the mail variables — done as part of 7.5–7.7
-  - Mail now goes over Resend's **HTTPS API** (django-anymail) when `RESEND_API_KEY` is set — Render free blocks SMTP 25/465/587. Until a domain is verified: `DEFAULT_FROM_EMAIL=Postly <onboarding@resend.dev>`, and Resend only delivers to the Resend account's own address (so other people's signups fail).
+  - Mail now goes over Resend's **HTTPS API** (django-anymail) when `RESEND_API_KEY` is set — Render free blocks SMTP 25/465/587. Until a domain is verified: `DEFAULT_FROM_EMAIL=Codomain <onboarding@resend.dev>`, and Resend only delivers to the Resend account's own address (so other people's signups fail).
 - [ ] 8.3 Move off the free tier, turn on backups
 - [x] 8.4 Add CI — `.github/workflows/ci.yml`; first green run on `main` at `953c71e` (2026-09-28), after adding `next typegen` before the type-check. Branch protection on `main` not yet confirmed
 - [ ] 8.5 Decide the tenant-isolation question

@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
-  title: "Log in — Postly",
+  title: "Log in — Codomain",
 };
 
 export default function LoginPage() {

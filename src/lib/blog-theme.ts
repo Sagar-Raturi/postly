@@ -237,7 +237,7 @@ function declarations(scheme: Scheme, hue: number | null): string {
  * On the selector: `:root:has([data-blog-theme])` is two classes' worth of
  * specificity against the `.dark` class next-themes puts on `<html>`, so a
  * blog wins deterministically rather than by source order. It has to win —
- * a reader's dark-mode preference for the *Postly* marketing site has no
+ * a reader's dark-mode preference for the *Codomain* marketing site has no
  * business restyling somebody else's blog. Targeting `:root` rather than
  * the wrapper also means `<body>` is covered, so overscroll does not reveal
  * the app's background underneath.

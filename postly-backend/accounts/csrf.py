@@ -15,7 +15,7 @@ the request treated exactly like one from our own frontend.
 What that allowed, in order of how much it matters:
 
 * **Login CSRF.** A page elsewhere submits the attacker's own email and
-  password to /api/auth/login/. The victim's browser receives a Postly
+  password to /api/auth/login/. The victim's browser receives a Codomain
   session for the attacker's account, and whatever they write next — a
   draft, a bio, their real address in settings — lands somewhere the
   attacker can read it. SameSite=Lax on the session cookie does not close
@@ -55,7 +55,7 @@ Not in the list, deliberately:
 * Logout, password change and user details. They are only meaningful with
   a session, and with a session SessionAuthentication already checks.
 * The public subscribe endpoints in blog/. They are meant to be callable
-  from a published blog with no Postly session and no cookies at all, and
+  from a published blog with no Codomain session and no cookies at all, and
   double opt-in is what protects them, not a token.
 """
 

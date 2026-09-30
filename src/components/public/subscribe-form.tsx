@@ -19,11 +19,11 @@ import {
  *
  * ## Why it does not use the auth forms' Field
  *
- * `components/auth/field.tsx` is built for Postly's own chrome and reaches
+ * `components/auth/field.tsx` is built for Codomain's own chrome and reaches
  * for `components/ui/input`, whose styling is the app's, not the blog's. A
  * blog is rendered in a palette its writer chose, in fonts they chose, on
- * a page with none of Postly's furniture on it. Borrowing the dashboard's
- * input here would put the one visibly Postly-shaped control on an
+ * a page with none of Codomain's furniture on it. Borrowing the dashboard's
+ * input here would put the one visibly Codomain-shaped control on an
  * otherwise wholly personal page. The markup below is instead built from
  * the same theme tokens as its neighbours — `--border`, `--brand`,
  * `--muted-foreground` — so it inherits whichever palette the writer
@@ -196,7 +196,7 @@ export function SubscribeForm({
           muted, muted-foreground, border and brand (which is also the
           focus ring). `--destructive` is not among them, so using it here
           would silently fall back to the *app's* red, which is tuned for
-          Postly's own light chrome: against a dark blog's background
+          Codomain's own light chrome: against a dark blog's background
           (oklch 0.185) it lands near 2.9:1, under the 4.5:1 that 13px
           text needs. Foreground against the same background is about
           15:1, and it already reads as emphasis because every other line

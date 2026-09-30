@@ -32,7 +32,7 @@ export function Logo({
           wordmarkClassName,
         )}
       >
-        Postly
+        Codomain
       </span>
     </span>
   );

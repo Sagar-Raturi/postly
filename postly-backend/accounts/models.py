@@ -1,7 +1,7 @@
 """
 The custom user model.
 
-Postly identifies people by email address: there is no username field, and
+Codomain identifies people by email address: there is no username field, and
 `USERNAME_FIELD` is `email`. Swapping this in later would have meant rewriting
 history, so it exists from the first migration — see MIGRATION.md.
 """

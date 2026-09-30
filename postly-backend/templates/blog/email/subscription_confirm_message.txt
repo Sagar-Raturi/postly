@@ -11,6 +11,6 @@ If this was not you, ignore this message. Nothing has been subscribed,
 and without the link above nothing will be — you will not hear from us
 again.
 
-— Sent by Postly on behalf of {{ site_name }}
-{% if postal_address %}Postly · {{ postal_address }}
+— Sent by Codomain on behalf of {{ site_name }}
+{% if postal_address %}Codomain · {{ postal_address }}
 {% endif %}{% endautoescape %}

@@ -8,7 +8,7 @@ the destructive way.
 
 ## The custom user model, and why the database was reset
 
-Postly identifies writers by email address. There is no username field, and
+Codomain identifies writers by email address. There is no username field, and
 `accounts.User.USERNAME_FIELD` is `email`.
 
 Django makes `AUTH_USER_MODEL` extremely awkward to change once migrations

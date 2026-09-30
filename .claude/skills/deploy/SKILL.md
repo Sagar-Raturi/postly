@@ -1,10 +1,10 @@
 ---
 name: deploy
-description: The Postly deployment runbook (Render backend + Vercel frontend) and the current deploy state. Use this whenever the user asks about deployment status, what phase or step they're on, how to deploy, what's left before launch, where a deploy got stuck, or anything about Render, Vercel, DATABASE_URL, CORS/CSRF origins, the email outbox cron, or going live. Use it even when the question is phrased casually, e.g. "where are we with the deploy" or "can I ship yet".
+description: The Codomain deployment runbook (Render backend + Vercel frontend) and the current deploy state. Use this whenever the user asks about deployment status, what phase or step they're on, how to deploy, what's left before launch, where a deploy got stuck, or anything about Render, Vercel, DATABASE_URL, CORS/CSRF origins, the email outbox cron, or going live. Use it even when the question is phrased casually, e.g. "where are we with the deploy" or "can I ship yet".
 allowed-tools: Read Grep Bash(cat *) Bash(git status *) Bash(git log *)
 ---
 
-# Postly deploy
+# Codomain deploy
 
 Eight phases from laptop to a live URL. Phases 1-6 reach a working public site on
 free hosting; 7 and 8 are pre-launch work. The full text of every phase is in

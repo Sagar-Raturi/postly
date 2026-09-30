@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .addresses import blog_address
 from .models import Site
 from .serializers import SiteSerializer
 from .subdomains import clean_subdomain
@@ -65,4 +66,4 @@ class SlugAvailabilityView(APIView):
                 {"slug": slug, "available": False, "reason": "That address is taken."}
             )
 
-        return Response({"slug": slug, "available": True, "domain": f"{slug}.postly.com"})
+        return Response({"slug": slug, "available": True, "domain": blog_address(slug)})

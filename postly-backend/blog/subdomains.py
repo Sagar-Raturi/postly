@@ -3,7 +3,7 @@ Rules for the slug that becomes a blog's subdomain.
 
 Django's SlugField validator is looser than DNS: it accepts underscores and
 leading hyphens, neither of which can appear in a hostname label. Since the
-slug is going to be published as <slug>.postly.com, it is checked here
+slug is going to be published as <slug>.codomain.blog, it is checked here
 instead, in one place used by both the Site serializer and the onboarding
 availability endpoint.
 """
@@ -20,11 +20,11 @@ SUBDOMAIN_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$")
 MIN_LENGTH = 3
 MAX_LENGTH = 63  # a DNS label may not exceed this
 
-# Names that have to stay available for Postly itself, whether or not they
+# Names that have to stay available for Codomain itself, whether or not they
 # are currently pointed at anything.
 #
 # Until Phase 3 moves blogs onto real subdomains they are served at
-# postly.com/<slug>, so this list has to cover the app's own top-level paths
+# www.codomain.in/<slug>, so this list has to cover the app's own top-level paths
 # as well: a blog at /onboarding would be shadowed by the app's route and
 # unreachable to its readers.
 RESERVED_SLUGS = frozenset(
@@ -38,6 +38,7 @@ RESERVED_SLUGS = frozenset(
         "billing",
         "blog",
         "cdn",
+        "codomain",
         "contact",
         "dashboard",
         "dev",
@@ -54,6 +55,7 @@ RESERVED_SLUGS = frozenset(
         "ns1",
         "ns2",
         "onboarding",
+        # The product's former name, kept so nobody can pose as it.
         "postly",
         "posts",
         # The legal pages, src/app/(app)/privacy and terms.

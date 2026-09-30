@@ -7,10 +7,10 @@ import { getPublicSite, metaDescription } from "@/lib/public-api";
 /**
  * The shell every published blog is served in.
  *
- * Deliberately outside the `(app)` route group, so none of Postly's own
+ * Deliberately outside the `(app)` route group, so none of Codomain's own
  * chrome reaches it: no marketing navbar, no dashboard header, no auth
  * provider, no "New post" button, and nothing anywhere that offers to log
- * anybody in. A reader with no Postly account should see one thing, which
+ * anybody in. A reader with no Codomain account should see one thing, which
  * is somebody's blog.
  *
  * ## The scales this surface is built on
@@ -39,10 +39,10 @@ import { getPublicSite, metaDescription } from "@/lib/public-api";
  * off-black (`oklch(0.16-0.20 …)`) rather than `#000`, because pure black
  * against light text produces halation at reading sizes.
  *
- * Phase 3 — real subdomains: `sagar.postly.com` rather than
- * `postly.com/sagar`. The only thing that has to change is where the slug
+ * Phase 3 — real subdomains: `sagar.codomain.blog` rather than
+ * `www.codomain.in/sagar`. The only thing that has to change is where the slug
  * comes from. A rewrite in `middleware.ts` can map the Host header onto
- * this same route (`sagar.postly.com/x` → `/sagar/x`) and every file under
+ * this same route (`sagar.codomain.blog/x` → `/sagar/x`) and every file under
  * here keeps working, because none of them do anything with `siteSlug`
  * except hand it to `lib/public-api.ts`.
  */
@@ -68,7 +68,7 @@ export async function generateMetadata({
     description,
     // Every page under here is by one person unless a post says otherwise.
     authors: [{ name: site.display_name }],
-    // The blog is its own site, not a section of postly.com.
+    // The blog is its own site, not a section of the marketing homepage.
     alternates: { canonical: `/${site.slug}` },
     openGraph: {
       type: "website",

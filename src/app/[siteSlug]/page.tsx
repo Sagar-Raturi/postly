@@ -21,7 +21,7 @@ import {
  * shows up here within the minute without a rebuild.
  *
  * There is no generateStaticParams: that would need a list of every blog on
- * Postly, and no public endpoint hands one out — deliberately, since it
+ * Codomain, and no public endpoint hands one out — deliberately, since it
  * would be a directory of every customer.
  *
  * `?year=2025` filters the feed to one year, which is what the archive in

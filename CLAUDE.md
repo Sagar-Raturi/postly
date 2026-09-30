@@ -1,8 +1,10 @@
 @AGENTS.md
 
-# Postly
+# Codomain
 
-A multi-tenant blogging platform. Writers sign up, get one blog at `/{siteSlug}` (moving to `{slug}.postly.com` in "Phase 3"), write in a TipTap editor, and readers can subscribe by email.
+A multi-tenant blogging platform. Writers sign up, get one blog at `www.codomain.in/{siteSlug}` (moving to `{slug}.codomain.blog` in "Phase 3"), write in a TipTap editor, and readers can subscribe by email.
+
+The product was called **Postly** until 2026-09-30. User-facing text says Codomain; internal names keep the old one on purpose, because renaming them breaks deploys or signs everyone out: the `postly-backend/` folder, the `postly_auth` cookie, `POSTLY_*` env vars, the `prose-postly` CSS class, `PostlyAccountAdapter`, the npm package name and the preview configs. Don't "finish" the rename on those.
 
 Two apps in one repo:
 
@@ -41,9 +43,9 @@ Dev email uses the console backend — verification/reset links print in the `ru
 
 ## Frontend layout
 
-- `src/app/(app)/` — Postly itself: marketing homepage, auth flows (`login`, `signup`, `verify-email`, `forgot-password`, `reset-password/[token]`, `onboarding`), and `dashboard/` (posts, `posts/[id]` editor, `settings`, `subscribers`). Its `layout.tsx` owns `AuthProvider` + `ThemeProvider`.
+- `src/app/(app)/` — Codomain itself: marketing homepage, auth flows (`login`, `signup`, `verify-email`, `forgot-password`, `reset-password/[token]`, `onboarding`), and `dashboard/` (posts, `posts/[id]` editor, `settings`, `subscribers`). Its `layout.tsx` owns `AuthProvider` + `ThemeProvider`.
   Also `privacy/` and `terms/` (built on `components/site/legal-page.tsx`, written from what the code actually does — update them when data handling changes).
-- `src/app/[siteSlug]/` — published blogs. Server Components, **no auth, no providers, no Postly chrome** — this separation is why the product sits in the `(app)` route group. Includes `subscription/confirm` and `subscription/unsubscribe`.
+- `src/app/[siteSlug]/` — published blogs. Server Components, **no auth, no providers, no Codomain chrome** — this separation is why the product sits in the `(app)` route group. Includes `subscription/confirm` and `subscription/unsubscribe`.
 - `src/app/{not-found,error,global-error}.tsx` — root 404 and error boundaries, on `components/status-page.tsx` (needs no provider). This Next passes `retry`, not `reset`, to error boundaries. A single unknown segment is a blog slug and gets `[siteSlug]/not-found.tsx` instead.
 - **Any new top-level app route must also be added to `RESERVED_SLUGS`** in `postly-backend/blog/subdomains.py`, or a writer can claim that slug and have their blog shadowed.
 - `src/components/{auth,dashboard,public,site,ui,mockups,motion}` — `site/` is the marketing page, `public/` is the blog shell, `ui/` is shadcn.
@@ -77,6 +79,7 @@ Dev email uses the console backend — verification/reset links print in the `ru
 - **Blog appearance is enums + a hue int (0–360)**, never a raw colour/CSS string from users. Inside `/[siteSlug]` use only the blog theme tokens (`--background`, `--foreground`, `--muted`, `--muted-foreground`, `--border`, `--brand`/`--ring`) — other Tailwind colours like `text-destructive` fall back to the app palette and break contrast on dark blogs.
 - **Auth is httpOnly session cookies — never store a token in the browser.** `lib/api.ts` must keep `credentials: "include"` + CSRF header.
 - **CSRF on signed-out endpoints:** DRF only checks CSRF for signed-in sessions, so any new AllowAny view that changes state from the app (like login, signup, password reset) must put `EnforceCsrfMixin` (`accounts/csrf.py`) first in its bases, or it accepts cross-site POSTs. A wrong-password 400 in production proves nothing about CSRF; a foreign `Origin` must get a 403. The public subscribe endpoints are deliberately exempt (no session, double opt-in).
+- **A blog's address comes from `blog/addresses.py`** (`Site.domain` / `Site.url`, `url` in the writer API). Never spell out a domain or build a blog link from `FRONTEND_URL` / `/${slug}` yourself: when `BLOG_DOMAIN` is set, those copies point at the wrong place. Host/origin lists on Render go through `env_list()`, which trims spaces and trailing slashes.
 - **Trailing slashes:** Django needs them; `next.config.ts` sets `skipTrailingSlashRedirect` and proxies `/api/:path(.*)` to `POSTLY_API_ORIGIN` in deployed envs so cookies stay first-party. Don't "simplify" either.
 - **Email subscriptions:** double opt-in, the unsubscribe path, `List-Unsubscribe` headers and the reserved `subscription` slug are load-bearing (shared sending reputation). No bulk-import of subscribers, no writer-side delete of subscriber rows. Mail goes via a `PostEmail` outbox drained by cron — not Celery.
 - **TipTap:** keep `immediatelyRender: false`; fetch the post keyed on `postId`, not on the editor instance. Autosave PATCHes 2s after the last change.
@@ -85,15 +88,15 @@ Dev email uses the console backend — verification/reset links print in the `ru
 
 ## Placeholders to replace before launch
 
-The owner is buying a domain and email address soon. Until then these are stand-ins. When the real values exist, replace them, then update this section:
+The app domain `codomain.in` is bought and live (`www.codomain.in` is the main address). The blog domain (`codomain.blog`) and the mail setup are still to come. Replace these when the real values exist, then update this section:
 
 | Placeholder | Current value | Where | Replace with |
 | --- | --- | --- | --- |
-| Contact email | `contact@postly.example` (reserved domain, can never receive mail) | `src/lib/operator.ts`, overridable by `NEXT_PUBLIC_CONTACT_EMAIL` on Vercel | the real mailbox. Shown in the footer, Privacy Policy and Terms |
+| Contact email | `contact@codomain.in` — receives nothing until Cloudflare Email Routing forwards it (runbook 7.5) | `src/lib/operator.ts`, overridable by `NEXT_PUBLIC_CONTACT_EMAIL` on Vercel | keep; just set up the forwarding. Shown in the footer, Privacy Policy and Terms |
 | Postal address in subscriber email | `New Delhi, India` (a city, not a valid CAN-SPAM address) | `POSTLY_POSTAL_ADDRESS` in `config/settings/base.py` (env var on Render) and `OPERATOR_LOCATION` in `src/lib/operator.ts` | a full postal address, PO box or mail-forwarding address. The owner will provide it |
 | Operator | `Sagar Raturi`, an individual | `OPERATOR_NAME` in `src/lib/operator.ts` | a company name if one is registered; then also revisit the Terms' governing law (India / New Delhi courts) |
-| Sending address | `hello@postly.com` default for `DEFAULT_FROM_EMAIL` | `config/settings/base.py`, env on Render | an address on the owned domain, verified in Resend (runbook 8.2) |
-| Domain | `postly.com` hard-coded | `blog/models.py` (`Site.domain`), `blog/onboarding.py`, `src/app/layout.tsx` (`metadataBase`), 3 tests, and the illustrative URLs in `src/lib/content.ts` / `components/mockups/` | the bought domain (runbook 7.1) |
+| Sending address | `Codomain <hello@codomain.in>` default for `DEFAULT_FROM_EMAIL`; production still sends from `onboarding@resend.dev` | `config/settings/base.py`, env on Render | set on Render once `codomain.in` is verified in Resend (runbook 7.6) |
+| Blog domain | none — `BLOG_DOMAIN` unset, so blogs are paths on `FRONTEND_URL` | `BLOG_DOMAIN` in `config/settings/base.py` (env on Render); every address goes through `blog/addresses.py` | `codomain.blog`, set only after the host routing and wildcard certificate exist (runbook 7.8–7.9) |
 
 The legal pages were drafted without a lawyer. Have them reviewed before real users arrive, and bump `LEGAL_UPDATED` in `src/lib/operator.ts` whenever they change.
 

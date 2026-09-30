@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PostEditor } from "@/components/dashboard/post-editor";
 
 export const metadata = {
-  title: "Editor — Postly",
+  title: "Editor — Codomain",
 };
 
 export default async function PostEditorPage({

@@ -344,10 +344,11 @@ function NavPill({ item, active }: { item: NavItem; active: boolean }) {
  * The blog this dashboard belongs to, and the two things a writer wants
  * from its address: to open it, and to copy it.
  *
- * `site.domain` is what a blog will be served from once it moves to its own
- * subdomain (`nina.postly.com`); `/<slug>` is what resolves today. The menu
- * therefore shows the first and links to the second — copying the domain
- * would hand somebody a URL that does not open yet.
+ * `site.domain` and `site.url` come from the backend, which decides where
+ * blogs live (BLOG_DOMAIN, see postly-backend/blog/addresses.py): a path on
+ * this app today, `nina.codomain.blog` once blogs have subdomains. The menu
+ * shows the first and links to the second, so neither changes here when
+ * blogs move.
  */
 function SiteBlock({ site }: { site: Site | null }) {
   const [copied, setCopied] = React.useState(false);
@@ -370,13 +371,11 @@ function SiteBlock({ site }: { site: Site | null }) {
     );
   }
 
-  const href = `/${site.slug}`;
+  const href = site.url;
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(
-        new URL(href, window.location.origin).toString(),
-      );
+      await navigator.clipboard.writeText(href);
       setCopied(true);
     } catch {
       // Refused on an insecure origin or a locked-down browser. Nothing was

@@ -171,7 +171,7 @@ class SubscriberViewSet(viewsets.ReadOnlyModelViewSet):
 
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = (
-            f'attachment; filename="postly-subscribers-'
+            f'attachment; filename="codomain-subscribers-'
             f'{timezone.now():%Y-%m-%d}.csv"'
         )
 

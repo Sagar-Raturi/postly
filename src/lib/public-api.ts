@@ -10,7 +10,7 @@
  * **Every function takes a site slug as its first argument, and nothing in
  * this file knows where that slug came from.** Today the routing layer reads
  * it out of the URL path (`/sagar/...`). In Phase 3 it will come from the
- * `Host` header (`sagar.postly.com`). That change replaces the argument's
+ * `Host` header (`sagar.codomain.blog`). That change replaces the argument's
  * source and touches nothing below this line.
  */
 
@@ -206,7 +206,7 @@ async function get<T>(path: string, siteSlug: string): Promise<T | null> {
     });
   } catch (cause) {
     throw new PublicApiError(
-      `Could not reach the Postly API at ${BASE_URL}.`,
+      `Could not reach the Codomain API at ${BASE_URL}.`,
       0,
       { cause },
     );

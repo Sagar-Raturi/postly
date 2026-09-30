@@ -6,7 +6,7 @@ address that hard-bounced and an address whose owner pressed "report spam"
 must both stop receiving mail immediately, and neither of them will ever
 click an unsubscribe link to say so. Every message we keep sending to those
 two is a direct debit against the sending domain's reputation — which, on a
-multi-tenant platform, is every writer's reputation and Postly's own
+multi-tenant platform, is every writer's reputation and Codomain's own
 password-reset mail.
 
 So this module is small and does one thing: take Resend's webhook, prove it

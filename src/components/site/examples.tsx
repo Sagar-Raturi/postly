@@ -18,7 +18,7 @@ export function Examples() {
           <SectionHeading
             label="Examples"
             title="One platform, any kind of writing"
-            description="Four sketches of what a Postly blog can be — an essay blog, an engineer's notebook, a recipe box, a photo journal. Illustrations, not real sites."
+            description="Four sketches of what a Codomain blog can be — an essay blog, an engineer's notebook, a recipe box, a photo journal. Illustrations, not real sites."
             className="max-w-xl"
           />
         </Reveal>

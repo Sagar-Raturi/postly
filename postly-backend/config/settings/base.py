@@ -21,6 +21,21 @@ env = environ.Env(
     EMAIL_USE_TLS=(bool, True),
 )
 
+
+def env_list(name: str) -> list[str]:
+    """
+    A comma-separated host or origin list, forgiving of how people type one.
+
+    django-environ splits on the comma and nothing else, so the natural
+    `https://a.example, https://b.example` yields `" https://b.example"`,
+    leading space included, which matches no request's Origin. A trailing
+    slash is the same trap: `https://b.example/` is not an origin either.
+    Both fail silently, as a 403 on every signed-in write; production hit
+    exactly that on CSRF_TRUSTED_ORIGINS. So the three list settings go
+    through here instead of reading `env()` directly.
+    """
+    return [item.strip().rstrip("/") for item in env(name) if item.strip()]
+
 # Read .env when present. Real deployments set variables in the environment
 # instead, which takes precedence over anything in the file.
 env_file = BASE_DIR / ".env"
@@ -32,7 +47,7 @@ if env_file.exists():
 SECRET_KEY = env("DJANGO_SECRET_KEY", default=None)
 
 DEBUG = env("DJANGO_DEBUG")
-ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -87,7 +102,7 @@ MIDDLEWARE = [
     # cookie cannot be used for this.
     "accounts.middleware.AuthHintCookieMiddleware",
     # TODO Phase 3: add the subdomain-resolving middleware that maps
-    # <slug>.postly.com onto a Site and attaches it to the request.
+    # <slug>.<BLOG_DOMAIN> onto a Site and attaches it to the request.
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -225,7 +240,7 @@ REST_FRAMEWORK = {
 # The frontend authenticates with a session cookie, not a JWT in
 # localStorage. A token in localStorage is readable by any script on the
 # page, so one XSS bug is one stolen session; an httpOnly cookie cannot be
-# read by JavaScript at all. Both halves of Postly are first-party, so there
+# read by JavaScript at all. Both halves of Codomain are first-party, so there
 # is no cross-origin requirement that would justify the trade.
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -237,15 +252,15 @@ CSRF_COOKIE_HTTPONLY = False
 
 # Unset in dev, where both halves are on localhost. In production the API and
 # the app sit on sibling subdomains, and the cookie has to be scoped to the
-# parent (".postly.com") for the app to send it back.
+# parent (".codomain.in") for the app to send it back.
 SESSION_COOKIE_DOMAIN = env("SESSION_COOKIE_DOMAIN", default=None)
 
 # Only the origins listed here may call the API from a browser. Deliberately
 # no CORS_ALLOW_ALL_ORIGINS anywhere, in any environment — it is incompatible
 # with credentialed requests, and it would hand any site a logged-in caller.
-CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
+CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_CREDENTIALS = True
-CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
 # --- allauth / dj-rest-auth --------------------------------------------------
 ACCOUNT_LOGIN_METHODS = {"email"}
@@ -278,6 +293,14 @@ REST_AUTH = {
 # Where the Next.js app lives. Verification and reset links point here, not
 # at Django, which renders no pages for people.
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000").rstrip("/")
+
+# The domain whose subdomains are writers' blogs, e.g. "codomain.blog", or
+# empty. Empty means every blog is a path on FRONTEND_URL, which is how the
+# app serves them today. Set it only once the frontend routes
+# <slug>.<BLOG_DOMAIN> and its wildcard certificate is live (runbook 7.8 and
+# 7.9): it changes the address in every dashboard and every subscriber email
+# at once. See blog/addresses.py.
+BLOG_DOMAIN = env("BLOG_DOMAIN", default="").strip().strip(".").lower()
 
 # --- Email -------------------------------------------------------------------
 # Two transports, picked by whether a Resend API key is configured. dev.py
@@ -315,7 +338,7 @@ EMAIL_PORT = env("EMAIL_PORT")
 EMAIL_USE_TLS = env("EMAIL_USE_TLS")
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Postly <hello@postly.com>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Codomain <hello@codomain.in>")
 
 # Where blog subscription mail comes from, as opposed to account mail.
 #
@@ -323,8 +346,8 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Postly <hello@postly.com
 # separate setting now so that split is a deployment change rather than a
 # code change. It has to be a split eventually: a newsletter and a password
 # reset sent from one domain share one reputation, so a single writer's
-# subscribers marking their posts as spam would start sending Postly's own
-# login mail to the junk folder. Phase 4 points this at mail.postly.com,
+# subscribers marking their posts as spam would start sending Codomain's own
+# login mail to the junk folder. Phase 4 points this at mail.codomain.in,
 # with its own DKIM key.
 #
 # Only the address matters here — blog/emails.py replaces the display name
@@ -363,7 +386,7 @@ POST_EMAIL_DELAY_MINUTES = env.int("POST_EMAIL_DELAY_MINUTES", default=15)
 # Most notification emails one blog may send in a day.
 #
 # A blast-radius bound rather than a quota anybody is meant to feel. Every
-# blog on Postly sends from one domain and therefore shares one sending
+# blog on Codomain sends from one domain and therefore shares one sending
 # reputation, so a single writer importing a bought list — or a single
 # account being taken over — can spend the whole platform's deliverability
 # in one publish. The cap turns that into "one blog's post went out over two

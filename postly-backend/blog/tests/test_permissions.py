@@ -161,12 +161,14 @@ class TestOnboarding:
     SITE_URL = "/api/onboarding/site/"
     SLUG_URL = "/api/onboarding/slug-available/"
 
-    def test_creating_the_first_blog(self, api_a, user_a):
+    def test_creating_the_first_blog(self, api_a, user_a, settings):
+        settings.FRONTEND_URL = "https://www.codomain.in"
+        settings.BLOG_DOMAIN = ""
         response = api_a.post(
             self.SITE_URL, {"name": "Small Hours", "slug": "small-hours"}, format="json"
         )
         assert response.status_code == 201
-        assert response.json()["domain"] == "small-hours.postly.com"
+        assert response.json()["domain"] == "www.codomain.in/small-hours"
         assert Site.objects.get(slug="small-hours").owner == user_a
 
     def test_a_second_blog_is_refused_here(self, api_a, site):
@@ -181,10 +183,12 @@ class TestOnboarding:
         )
         assert response.status_code == 401
 
-    def test_a_free_slug_is_available(self, api_a):
+    def test_a_free_slug_is_available(self, api_a, settings):
+        settings.FRONTEND_URL = "https://www.codomain.in"
+        settings.BLOG_DOMAIN = ""
         body = api_a.get(self.SLUG_URL, {"slug": "field-report"}).json()
         assert body["available"] is True
-        assert body["domain"] == "field-report.postly.com"
+        assert body["domain"] == "www.codomain.in/field-report"
 
     def test_a_taken_slug_is_not(self, api_a, site):
         body = api_a.get(self.SLUG_URL, {"slug": "small-hours"}).json()

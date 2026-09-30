@@ -1,4 +1,4 @@
-# Postly deploy runbook
+# Codomain deploy runbook
 
 Django + Next.js, first deploy. Eight phases from your laptop to a URL you can
 open on your phone. Phases 1-6 get you live on free hosting; 7 and 8 are for when
@@ -231,7 +231,7 @@ placeholder origin. That's phase 5.
 
 **~5 min**
 
-Now that both halves have URLs, point the backend at the real frontend. Postly
+Now that both halves have URLs, point the backend at the real frontend. Codomain
 authenticates with a session cookie, so all three of these have to agree or login
 fails in confusing ways.
 
@@ -395,8 +395,8 @@ one writer's posts as spam cannot push password-reset mail into junk.
 
 | Resend domain | Sends | Render variable |
 | --- | --- | --- |
-| `yourapp.com` | Verification, password reset | `DEFAULT_FROM_EMAIL=Postly <hello@yourapp.com>` |
-| `mail.yourapp.com` | New-post mail to subscribers | `SUBSCRIPTION_FROM_EMAIL=Postly <posts@mail.yourapp.com>` |
+| `yourapp.com` | Verification, password reset | `DEFAULT_FROM_EMAIL=Codomain <hello@yourapp.com>` |
+| `mail.yourapp.com` | New-post mail to subscribers | `SUBSCRIPTION_FROM_EMAIL=Codomain <posts@mail.yourapp.com>` |
 
 1. Resend → **Domains → Add domain** for each. Region: pick the one nearest the
    Render service.
@@ -438,7 +438,7 @@ the verification link, reset the password, subscribe to a blog from a third
 address. Then update the placeholder table in `CLAUDE.md` and bump
 `LEGAL_UPDATED` in `src/lib/operator.ts`.
 
-**Stage A done: Postly is launchable.**
+**Stage A done: Codomain is launchable.**
 
 ### 7.8 Blogs on their own domain (code first)
 
@@ -447,7 +447,7 @@ existing `/[siteSlug]/...` routes, and every blog link built from
 `FRONTEND_URL` (`blog/emails.py`, `Site.domain`, the dashboard's "view blog")
 switched to the blog domain. Old `yourapp.com/<slug>` URLs redirect to the new
 ones. Set `NEXT_PUBLIC_MARKETING_URL=https://yourapp.com` so a blog's "Published
-with Postly" credit points home.
+with Codomain" credit points home.
 
 ### 7.9 Wire the blog domain to Vercel
 

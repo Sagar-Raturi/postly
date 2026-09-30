@@ -4,7 +4,7 @@ The anonymous, read-only half of the API — what the published blog reads.
 Every view here is `AllowAny`, which is the opposite of the project default
 (see REST_FRAMEWORK in settings: an endpoint that says nothing is private).
 That is deliberate and it is the point of this module: these three URLs are
-the only ones a reader with no Postly account ever touches, so keeping them
+the only ones a reader with no Codomain account ever touches, so keeping them
 in one file makes the public surface something you can read end to end.
 
 Three rules hold across all of them:
@@ -105,7 +105,7 @@ class PublicPostDetailView(RetrieveAPIView):
 # Subscriptions
 #
 # The three endpoints below are the only *writable* public surface on
-# Postly, so two properties hold across all of them.
+# Codomain, so two properties hold across all of them.
 #
 # **They carry no authentication at all.** `authentication_classes = []`
 # rather than the project default, and this is load-bearing rather than

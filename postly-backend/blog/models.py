@@ -9,6 +9,8 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 from django.utils.text import Truncator, slugify
 
+from .addresses import blog_address, blog_url
+
 EXCERPT_LENGTH = 200
 
 # Words a minute, for the read-time estimate shown in the dashboard and on
@@ -35,7 +37,7 @@ WHITESPACE_RE = re.compile(r"\s+")
 # untouched either way.
 #
 # This is the per-post counterpart of RESERVED_SLUGS in subdomains.py,
-# which reserves the *site* slugs Postly's own top-level routes need.
+# which reserves the *site* slugs Codomain's own top-level routes need.
 RESERVED_POST_SLUGS = frozenset({"subscription"})
 
 
@@ -80,7 +82,8 @@ class Site(models.Model):
     slug = models.SlugField(
         max_length=63,  # a DNS label may not exceed 63 characters
         unique=True,
-        help_text="Becomes the subdomain: <slug>.postly.com",
+        help_text="The blog's address: a path on the app today, a subdomain "
+        "once BLOG_DOMAIN is set. See blog/addresses.py.",
     )
     tagline = models.CharField(
         max_length=160,
@@ -145,8 +148,13 @@ class Site(models.Model):
 
     @property
     def domain(self) -> str:
-        """The address this blog will be served from once routing exists."""
-        return f"{self.slug}.postly.com"
+        """Where readers find this blog, without the scheme. See addresses.py."""
+        return blog_address(self.slug)
+
+    @property
+    def url(self) -> str:
+        """The blog's home page as an absolute URL. See addresses.py."""
+        return blog_url(self.slug)
 
 
 class Post(models.Model):
@@ -274,7 +282,7 @@ class Subscriber(models.Model):
     """
     One reader who asked to hear when a blog publishes.
 
-    Scoped to a Site, not to a User: subscribers have no Postly account and
+    Scoped to a Site, not to a User: subscribers have no Codomain account and
     never will, and the same address subscribing to two blogs is two rows.
     Site is the tenant boundary everywhere else in this file, and it is the
     tenant boundary here — a writer can only ever see, export or mail the
@@ -284,12 +292,12 @@ class Subscriber(models.Model):
 
     A row is created in `pending` and stays there until the person follows
     the link in a confirmation email. That is not politeness, it is the
-    thing that keeps Postly able to send mail at all:
+    thing that keeps Codomain able to send mail at all:
 
     * **Anyone can type anyone's address into a public form.** Without a
       confirmation step the form is a way to subscribe a stranger, and the
       stranger's only signal is to press "spam".
-    * **Every blog on Postly shares one sending reputation.** One writer's
+    * **Every blog on Codomain shares one sending reputation.** One writer's
       unconfirmed list earning complaints degrades delivery for every other
       writer — and, on a shared domain, for password-reset mail too.
     * **GDPR treats consent as something you have to be able to show.**
@@ -328,7 +336,7 @@ class Subscriber(models.Model):
         #   measure it as a rate, and above roughly 0.3% they start
         #   filtering everything from the sending domain — which on a
         #   multi-tenant platform means every other blog's posts, and
-        #   Postly's own password-reset mail.
+        #   Codomain's own password-reset mail.
         #
         # Collapsing them would make that rate impossible to measure, which
         # is the one number worth watching here.
