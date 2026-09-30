@@ -386,17 +386,17 @@ without an avatar gets an initials circle in their blog's accent colour.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `POST` | `/api/auth/signup/` | `email`, `display_name`, `password1`, `password2` |
+| `POST` | `/api/auth/signup/` | `email`, `display_name`, `password1`, `password2`. 503 with `detail` if the confirmation email cannot be sent; nothing is saved |
 | `POST` | `/api/auth/login/` | 204 plus a session cookie; no token in the body |
 | `POST` | `/api/auth/logout/` | `GET` is a 405 |
 | `GET` `PATCH` | `/api/auth/user/` | current account. `PATCH` writes `display_name`, `bio`, `show_email_publicly`; `email` and `avatar` are read-only |
 | `POST` `DELETE` | `/api/auth/user/avatar/` | multipart `avatar`; both answer with the whole account |
 | `POST` | `/api/auth/user/delete/` | `password`; 204. Deletes the account, its blog, posts, subscribers and queued email, removes the avatar file and ends the session. Shares the `auth_login` throttle |
-| `POST` | `/api/auth/password/reset/` | identical response for known and unknown addresses |
+| `POST` | `/api/auth/password/reset/` | identical response for known and unknown addresses, including when the email fails to send (logged) |
 | `POST` | `/api/auth/password/reset/confirm/` | `uid`, `token`, `new_password1`, `new_password2` |
 | `POST` | `/api/auth/password/change/` | requires `old_password` |
 | `GET` | `/api/auth/verify-email/{key}/` | the link in the confirmation email |
-| `POST` | `/api/auth/resend-verification/` | for a lost confirmation email |
+| `POST` | `/api/auth/resend-verification/` | for a lost confirmation email. Same response whatever happens, send failures included (logged) |
 | `GET` | `/api/auth/csrf/` | sets the CSRF cookie |
 
 ### Onboarding

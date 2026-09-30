@@ -153,7 +153,11 @@ export type PostInput = {
  * Transport
  * ------------------------------------------------------------------ */
 
-/** A non-2xx response. `data` holds DRF's field-level validation errors. */
+/**
+ * A non-2xx response. `data` holds DRF's field-level validation errors, or
+ * is null when the body was not something to show; `message` then says
+ * so in words. See errorFromResponse().
+ */
 export class ApiError extends Error {
   readonly status: number;
   readonly data: unknown;
@@ -285,15 +289,56 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const body = await response.text();
   const parsed = body ? safeJsonParse(body) : null;
 
-  if (!response.ok) {
-    throw new ApiError(
-      `${response.status} ${response.statusText}`,
-      response.status,
-      parsed ?? body,
-    );
-  }
+  if (!response.ok) throw errorFromResponse(response, parsed);
 
   return parsed as T;
+}
+
+/** For a 5xx that did not say what went wrong. */
+const SERVER_TROUBLE =
+  "Something went wrong on our end. Please try again in a few minutes.";
+
+/** For any other answer that was not the JSON this client expects. */
+const UNREADABLE_RESPONSE = "Something went wrong. Please try again.";
+
+/**
+ * The ApiError for a non-2xx response, carrying only what is fit to show.
+ *
+ * A body is passed through as `data` only when it is JSON the API wrote on
+ * purpose. Anything else is dropped and replaced by a generic sentence in
+ * `message`, with `data` null:
+ *
+ * - **Non-JSON bodies.** An unhandled exception in Django is its stock
+ *   HTML "Server Error (500)" page, and a proxy in front of it has pages
+ *   of its own. `data` used to hold that text, and since `detail` hands a
+ *   string back verbatim, the signup form once showed a person a raw
+ *   `<!doctype html>` document.
+ * - **A 5xx without a string `detail`.** Where the API fails on purpose it
+ *   says why in `detail`, as signup does when the confirmation email
+ *   cannot be sent (a 503 whose `detail` explains that nothing was saved).
+ *   A 5xx body without one is not a message meant for people.
+ *
+ * `status` is kept either way, so callers that branch on it still can.
+ */
+function errorFromResponse(response: Response, parsed: unknown): ApiError {
+  const { status } = response;
+  const isJsonObject = parsed !== null && typeof parsed === "object";
+
+  const meantForPeople =
+    status < 500
+      ? isJsonObject
+      : isJsonObject &&
+        typeof (parsed as { detail?: unknown }).detail === "string";
+
+  if (meantForPeople) {
+    return new ApiError(`${status} ${response.statusText}`, status, parsed);
+  }
+
+  return new ApiError(
+    status >= 500 ? SERVER_TROUBLE : UNREADABLE_RESPONSE,
+    status,
+    null,
+  );
 }
 
 function safeJsonParse(text: string): unknown {
