@@ -8,6 +8,8 @@ has no social login, so SignupSerializer is written against allauth's
 adapter directly — the same three calls dj-rest-auth's own version makes.
 """
 
+import logging
+
 from allauth.account.adapter import get_adapter
 from allauth.account.forms import default_token_generator
 from allauth.account.models import EmailAddress
@@ -18,6 +20,9 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from . import avatars
+from .adapters import EmailNotSent
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -170,6 +175,14 @@ class PasswordResetSerializer(serializers.Serializer):
 
     The response is identical whether or not the address has an account, so
     this endpoint cannot be used to find out who has signed up.
+
+    That includes when the send fails. Only a known address causes a send,
+    so letting its failure reach the view as a 5xx would make the endpoint
+    answer "we tried to email this person" during any mail outage. A failed
+    send is logged and the usual "check your inbox" goes back. Somebody
+    whose mail never arrives can ask again, which is what they would do
+    anyway, and nothing was written that a retry has to get past: the reset
+    token is a stateless HMAC.
     """
 
     email = serializers.EmailField()
@@ -183,7 +196,10 @@ class PasswordResetSerializer(serializers.Serializer):
         # Inactive users are skipped: a disabled account should not be
         # recoverable by whoever disabled it.
         for user in User.objects.filter(email__iexact=email, is_active=True):
-            self._send(user, email)
+            try:
+                self._send(user, email)
+            except EmailNotSent:
+                logger.exception("Could not send a password reset email to user %s", user.pk)
 
     def _send(self, user, email: str) -> None:
         token = default_token_generator.make_token(user)

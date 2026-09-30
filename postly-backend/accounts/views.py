@@ -15,13 +15,17 @@ what switches on dj-rest-auth's check that an address is verified before it
 lets anyone log in.
 """
 
+import logging
+
 from allauth.account import app_settings as allauth_settings
 from allauth.account.models import EmailAddress, EmailConfirmation, EmailConfirmationHMAC
 from allauth.account.utils import complete_signup
+from allauth.core import ratelimit
 from allauth.core.exceptions import ImmediateHttpResponse
 from dj_rest_auth.app_settings import api_settings
 from dj_rest_auth.views import LoginView, PasswordResetView
 from django.contrib.auth import logout
+from django.db import transaction
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -34,7 +38,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .adapters import EmailNotSent
 from .serializers import AvatarSerializer, UserSerializer
+
+logger = logging.getLogger(__name__)
 
 # Deliberately covers three cases in one sentence. allauth's HMAC keys carry
 # no server-side state and its lookup filters on verified=False, so a link
@@ -50,6 +57,14 @@ INVALID_KEY = (
 # used to work out who has an account here.
 VERIFICATION_SENT = "If that address needs confirming, a new link is on its way."
 
+# Says that nothing was kept, because that is the part that changes what the
+# person does next: they can sign up again with the same address, rather
+# than going looking for a login they do not have.
+SIGNUP_EMAIL_FAILED = (
+    "We couldn't send your confirmation email, so your account wasn't "
+    "created. Please try again in a few minutes."
+)
+
 
 class ThrottledLoginView(LoginView):
     throttle_scope = "auth_login"
@@ -60,7 +75,43 @@ class ThrottledPasswordResetView(PasswordResetView):
 
 
 class SignupView(CreateAPIView):
-    """POST /api/auth/signup/"""
+    """
+    POST /api/auth/signup/
+
+    **If the confirmation email cannot be sent, the account is not created.**
+    The User and its EmailAddress are written in the same transaction as the
+    send, and an EmailNotSent rolls both back and answers 503 with a
+    `detail` the signup form shows as it is.
+
+    The other way round (keep the account, report success, let "resend
+    verification" retry) was tried by accident in production, where
+    ATOMIC_REQUESTS is off and nothing caught the error: the row was
+    committed, the person saw a 500, and signing up again said the address
+    was taken, for an account they could neither log into nor confirm.
+    Quietly reporting success would only move that dead end to the "check
+    your inbox" screen. When the send is failing for a reason that lasts,
+    such as a mail provider refusing unverified recipients, every resend
+    fails too, and verification is mandatory, so the account is useless
+    until mail works again. A clear "try again later" with nothing left
+    behind is the honest answer, and the retry starts from scratch.
+
+    A 503 here discloses nothing: this endpoint already says, as a 400, when
+    an address has an account, and a failed send says nothing about anyone
+    else's.
+
+    Two edge cases, both acceptable:
+
+    * A send that timed out after the provider accepted it still delivers
+      the email. Its link then points at an EmailAddress that was rolled
+      back, and the verify page reports it as used or expired. Signing up
+      again sends a working one.
+    * allauth spends a per-address cooldown (EMAIL_CONFIRMATION_COOLDOWN,
+      three minutes) *before* it sends, and it lives in the cache, outside
+      the transaction. Left alone, a retry inside those three minutes would
+      create the account and skip the email without an error, which is
+      worse than the original bug. So the cooldown is cleared along with
+      the rollback.
+    """
 
     serializer_class = api_settings.REGISTER_SERIALIZER
     permission_classes = [AllowAny]
@@ -75,19 +126,37 @@ class SignupView(CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.save(request._request)
-
-        # Sends the confirmation mail. Verification is mandatory, so it does
-        # not log the new account in — that has to wait for the link.
         try:
-            complete_signup(
-                request._request, user, allauth_settings.EMAIL_VERIFICATION, None
+            with transaction.atomic():
+                user = serializer.save(request._request)
+
+                # Sends the confirmation mail. Verification is mandatory, so
+                # it does not log the new account in — that has to wait for
+                # the link.
+                try:
+                    complete_signup(
+                        request._request, user, allauth_settings.EMAIL_VERIFICATION, None
+                    )
+                except ImmediateHttpResponse:
+                    # allauth signals "stop and return this redirect" this
+                    # way. There is nowhere to redirect a JSON client to, and
+                    # the mail has gone, so the signup has in fact succeeded.
+                    pass
+        except EmailNotSent:
+            # `exception` so the provider's own error survives into the logs
+            # as this one's cause. It is the only record of why signups are
+            # failing.
+            logger.exception("Signup rolled back: the confirmation email was not sent")
+            # allauth keys the cooldown on the lowercased address.
+            ratelimit.clear(
+                request._request,
+                action="confirm_email",
+                key=serializer.validated_data["email"].lower(),
             )
-        except ImmediateHttpResponse:
-            # allauth signals "stop and return this redirect" this way. There
-            # is nowhere to redirect a JSON client to, and the account is
-            # already created, so the signup has in fact succeeded.
-            pass
+            return Response(
+                {"detail": SIGNUP_EMAIL_FAILED},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         return Response(
             {"detail": "Verification email sent."}, status=status.HTTP_201_CREATED
@@ -104,6 +173,12 @@ class ResendVerificationView(APIView):
 
     The "check your inbox" screen would otherwise be a dead end for anyone
     whose mail went astray.
+
+    A failed send is logged and answered with the usual VERIFICATION_SENT,
+    unlike signup's 503. Only an unverified address that exists triggers a
+    send, so an error that only a send can produce would tell a caller that
+    the address has an unconfirmed account here, which is the one thing
+    this response is worded to keep quiet about.
     """
 
     permission_classes = [AllowAny]
@@ -118,7 +193,12 @@ class ResendVerificationView(APIView):
             email__iexact=serializer.validated_data["email"], verified=False
         ).first()
         if address is not None:
-            address.send_confirmation(request._request)
+            try:
+                address.send_confirmation(request._request)
+            except EmailNotSent:
+                logger.exception(
+                    "Could not resend the confirmation email for address %s", address.pk
+                )
 
         return Response({"detail": VERIFICATION_SENT})
 
