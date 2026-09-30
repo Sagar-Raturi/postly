@@ -291,28 +291,177 @@ stays there until phase 8 — no mail is going out yet, and that's expected.
 
 ## Phase 7 — Your own domain
 
-**when you have one**
+**~2 hours of work, spread over a day or two of waiting on DNS**
 
-Optional for testing, required before launch. Do the code change first or the
-dashboard will show every writer an address that doesn't resolve.
+Two domains, not one. Writers publish their own HTML, so blogs must not share a
+registrable domain with the dashboard — the same split GitHub makes between
+`github.com` and `github.io`. It is also what settles 8.5.
 
-### 7.1 Make the domain configurable
+| | Example | Serves | DNS lives at |
+| --- | --- | --- | --- |
+| App domain | `yourapp.com` | homepage, login, dashboard, `/api/*` (proxied to Render) | Cloudflare (free) |
+| Blog domain | `yourblogs.com` | `*.yourblogs.com` — one subdomain per writer | Vercel nameservers |
 
-`postly.com` is hardcoded in `blog/models.py:149` (`Site.domain`),
-`blog/onboarding.py:68` and `src/app/layout.tsx:44` (`metadataBase`). Three tests
-assert on it too.
+There is no `api.` subdomain: `next.config.ts` proxies `/api/*` to Render, so
+the browser only ever talks to the app domain and every cookie stays
+first-party. Keep it that way.
 
-### 7.2 Point DNS through Cloudflare
+Two stages. **Stage A** (7.1–7.7) puts the app on its own domain with working
+mail and needs no code beyond 7.4 — blogs keep serving at `yourapp.com/<slug>`.
+**Stage B** (7.8–7.9) moves blogs to `<slug>.yourblogs.com` and needs code
+first.
 
-Apex and `www` at Vercel, an `api` subdomain at Render. Add a CAA record with
-both `issue` and `issuewild` for Let's Encrypt.
+### Tools and services
 
-### 7.3 Update every origin setting
+| Service | For | Cost |
+| --- | --- | --- |
+| Registrar — Hostinger India (or GoDaddy India) | Buying both domains in INR over UPI | ~₹800–1,500 per domain per year; check the *renewal* price |
+| Cloudflare (free plan) | DNS for the app domain, Email Routing for `contact@` | ₹0 |
+| Vercel (existing, Hobby) | Serves both domains, issues the HTTPS certificates | ₹0 |
+| Render (existing) | Only environment variables change | ₹0 |
+| Resend (free plan) | Sending mail — 3 domains, 3,000/month, **100/day** | ₹0 until the daily cap bites; Pro is $20/month |
+| Gmail (existing) | Inbox for `contact@`, via forwarding and "Send mail as" | ₹0 |
+| An authenticator app | 2FA on the registrar, Cloudflare and Resend | ₹0 |
+| dnschecker.org, mail-tester.com | Watching DNS spread; scoring a test email | ₹0 |
 
-The four Render variables from phase 5, plus `NEXT_PUBLIC_API_URL` and
-`NEXT_PUBLIC_MARKETING_URL` on Vercel — then redeploy both.
+Not needed: the registrar's email, hosting, "SSL certificate" or site-builder
+add-ons, Google Workspace, Cloudflare Registrar (bills in USD only).
 
-### 7.4 Hold off on HSTS preload
+### 7.1 Buy both domains
+
+At the registrar: search, add both to the cart, remove every add-on, pay by UPI.
+Buying 2–3 years up front avoids a failed renewal payment — an expired domain
+takes every writer's blog offline. Then in the registrar account: auto-renew
+**on**, domain/transfer lock **on**, WHOIS privacy **on**, 2FA **on**.
+
+Register with a free work Gmail (separate from your personal one), and keep it
+as the registrar's login and recovery address for good — never move it to an
+address *on the domain*. If the domain ever lapses or its DNS breaks, mail to
+that address stops arriving, including the renewal warnings and the password
+reset you would need to fix it. The same Gmail is where 7.5 forwards `contact@`.
+
+### 7.2 Put the app domain's DNS on Cloudflare
+
+1. Cloudflare dashboard → **Add a domain** → `yourapp.com` → **Free** plan.
+2. Cloudflare shows two nameservers (`xxx.ns.cloudflare.com`). At the registrar,
+   replace its nameservers with those two.
+3. Wait for Cloudflare to mark the domain **Active** — minutes to a few hours.
+   Nothing below works until then.
+
+Every record added in Cloudflare below is **DNS only (grey cloud)**, never
+proxied. Vercel and Resend both need to see the real traffic.
+
+### 7.3 Point the app domain at Vercel
+
+1. Vercel → project → **Settings → Domains** → add `yourapp.com`, plus `www`.
+   One of the two becomes the main address and the other 308-redirects to it;
+   Vercel's default makes `www` the main one, which is fine. Whichever is main
+   is the exact origin `FRONTEND_URL` and `CSRF_TRUSTED_ORIGINS` must use in 7.7.
+2. Copy the records Vercel's domain card shows into Cloudflare — an `A` record
+   for `@` and a `CNAME` for `www`. Use the card's values, not ones from a blog
+   post.
+3. Wait for both to show **Valid Configuration** with a certificate issued, then
+   open `https://yourapp.com` and log in.
+
+Skip CAA records for now. They are optional, and a wrong one stops certificates
+issuing or renewing.
+
+### 7.4 Make the domain configurable (code)
+
+`postly.com` is hardcoded in `blog/models.py` (`Site.domain`),
+`blog/onboarding.py` and `src/app/layout.tsx` (`metadataBase`), and three tests
+assert on it. Replace it with a setting before 7.7, or the dashboard shows every
+writer an address that doesn't resolve.
+
+### 7.5 Receiving mail — `contact@yourapp.com`
+
+1. Cloudflare → `yourapp.com` → **Email → Email Routing** → enable. Let it add
+   its MX and SPF records.
+2. Add a destination address (your Gmail) and click the link Cloudflare emails
+   there.
+3. Routing rule: `contact@yourapp.com` → that Gmail.
+4. Send a test from another account; it should land in Gmail.
+
+To *reply* as `contact@`: Gmail → Settings → Accounts → **Send mail as** → add
+`contact@yourapp.com`, SMTP server `smtp.resend.com`, port `465` (SSL), username
+`resend`, password a separate Resend API key with **Sending access** only —
+created after 7.6 verifies the domain, entered in Gmail by you, stored nowhere
+else.
+
+### 7.6 Sending mail — verify two domains in Resend
+
+Account mail and subscriber mail go out on separate domains, so readers marking
+one writer's posts as spam cannot push password-reset mail into junk.
+
+| Resend domain | Sends | Render variable |
+| --- | --- | --- |
+| `yourapp.com` | Verification, password reset | `DEFAULT_FROM_EMAIL=Postly <hello@yourapp.com>` |
+| `mail.yourapp.com` | New-post mail to subscribers | `SUBSCRIPTION_FROM_EMAIL=Postly <posts@mail.yourapp.com>` |
+
+1. Resend → **Domains → Add domain** for each. Region: pick the one nearest the
+   Render service.
+2. Copy every record Resend lists (DKIM `TXT`, the `send` subdomain's `MX` and
+   SPF `TXT`) into Cloudflare. They live on subdomains, so they don't collide
+   with Email Routing's records on the apex.
+3. Add one DMARC record: `TXT` at `_dmarc` →
+   `v=DMARC1; p=none; rua=mailto:contact@yourapp.com`. Tighten `p=` to
+   `quarantine` after a few weeks of clean reports.
+4. Click **Verify** on both. Then send one real email to the address
+   mail-tester.com gives you and aim for 9/10 or better.
+5. Webhook: Resend → **Webhooks** → endpoint
+   `https://yourapp.com/api/webhooks/resend/`, events `email.bounced` and
+   `email.complained`. Put its signing secret in `RESEND_WEBHOOK_SECRET` on
+   Render. The endpoint refuses every request without it, by design.
+
+### 7.7 Switch the settings over, redeploy both
+
+Render (web service **and** the 8.1 cron job, which shares its environment):
+
+| Variable | Value |
+| --- | --- |
+| `FRONTEND_URL` | `https://yourapp.com` |
+| `CSRF_TRUSTED_ORIGINS` | `https://yourapp.com,https://<project>.vercel.app` — keep the old one until nobody uses it |
+| `DEFAULT_FROM_EMAIL` / `SUBSCRIPTION_FROM_EMAIL` | from 7.6 |
+| `RESEND_WEBHOOK_SECRET` | from 7.6 |
+| `POSTLY_POSTAL_ADDRESS` | a real postal address, PO box or mail-forwarding address (CAN-SPAM) |
+
+`DJANGO_ALLOWED_HOSTS` does **not** change — requests still arrive at the
+Render host through the proxy. Leave `SESSION_COOKIE_DOMAIN` unset so the
+session cookie stays host-only on the app domain.
+
+Vercel: `NEXT_PUBLIC_CONTACT_EMAIL=contact@yourapp.com`. `NEXT_PUBLIC_API_URL`
+stays `/api` and `POSTLY_API_ORIGIN` stays the Render URL. `NEXT_PUBLIC_` values
+are baked in at build time, so redeploy after changing them.
+
+Smoke test: sign up with an address that is **not** the Resend account's, click
+the verification link, reset the password, subscribe to a blog from a third
+address. Then update the placeholder table in `CLAUDE.md` and bump
+`LEGAL_UPDATED` in `src/lib/operator.ts`.
+
+**Stage A done: Postly is launchable.**
+
+### 7.8 Blogs on their own domain (code first)
+
+Before any DNS: middleware that rewrites `<slug>.yourblogs.com/...` to the
+existing `/[siteSlug]/...` routes, and every blog link built from
+`FRONTEND_URL` (`blog/emails.py`, `Site.domain`, the dashboard's "view blog")
+switched to the blog domain. Old `yourapp.com/<slug>` URLs redirect to the new
+ones. Set `NEXT_PUBLIC_MARKETING_URL=https://yourapp.com` so a blog's "Published
+with Postly" credit points home.
+
+### 7.9 Wire the blog domain to Vercel
+
+1. Vercel → **Settings → Domains** → add `*.yourblogs.com` (and `yourblogs.com`,
+   redirecting to the app's homepage).
+2. Vercel switches the domain to its own nameservers and lists them. At the
+   registrar, set the blog domain's nameservers to those. A wildcard
+   certificate needs Vercel to answer DNS challenges; this is the simplest way.
+3. When the wildcard shows **Valid Configuration**, open two writers' blogs on
+   their subdomains in a private window.
+
+The blog domain sends and receives no mail.
+
+### 7.10 Hold off on HSTS preload
 
 `prod.py` already sets `SECURE_HSTS_PRELOAD`, which is harmless. *Submitting* to
 the preload list is the irreversible part — don't, until wildcard TLS actually
@@ -339,13 +488,11 @@ into `PostEmail` that never sends — and it fails silently, which is the worst 
 
 ### 8.2 Verify a sending domain and set the mail variables
 
-`EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `SUBSCRIPTION_FROM_EMAIL` on a `mail.`
-subdomain with its own DKIM key, and `RESEND_WEBHOOK_SECRET`. The webhook
-endpoint refuses every request without that secret, by design.
-
-Keep subscriber mail on a separate subdomain from account mail. One writer's
-readers marking posts as spam must not be able to send your own password-reset
-mail to junk.
+Covered step by step in 7.5–7.7. Mail goes over Resend's HTTPS API
+(django-anymail) when `RESEND_API_KEY` is set — Render's free tier blocks SMTP —
+so `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` are not needed on Render. Until a
+domain is verified, Resend only delivers to the Resend account's own address, so
+nobody else can finish signing up.
 
 ### 8.3 Move off the free tier and turn on backups
 
