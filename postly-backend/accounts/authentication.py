@@ -14,8 +14,13 @@ class CsrfSessionAuthentication(SessionAuthentication):
     The scheme is deliberately `Session` and not `Basic` — a Basic challenge
     would make the browser pop its own credentials dialog over our UI.
 
-    CSRF enforcement is inherited unchanged: SessionAuthentication checks the
-    token on unsafe methods for anyone carrying a session cookie.
+    CSRF enforcement is inherited unchanged, and that is narrower than it
+    looks: SessionAuthentication checks the token on unsafe methods only
+    once the session has resolved to an active user. An anonymous request
+    gets no check here at all — which is right for private endpoints, since
+    it is refused with a 401 anyway, and wrong for the signed-out ones
+    (login, signup, password reset). Those carry EnforceCsrfMixin from
+    accounts/csrf.py instead.
     """
 
     def authenticate_header(self, request) -> str:

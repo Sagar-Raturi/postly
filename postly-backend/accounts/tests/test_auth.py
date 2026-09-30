@@ -431,13 +431,16 @@ class TestCsrf:
         # one is httpOnly.
         assert not cookie["httponly"]
 
-    def test_an_unsafe_request_without_the_token_is_refused(self, user_a, password):
+    def test_an_unsafe_request_without_the_token_is_refused(self, user_a):
         from rest_framework.test import APIClient
 
         # enforce_csrf_checks mirrors what a browser actually faces; the
         # other tests leave it off so they can exercise the endpoints.
+        # force_login rather than a POST to the login endpoint: that POST
+        # carries no token either, and is itself refused now — see
+        # test_csrf.py for the signed-out endpoints.
         client = APIClient(enforce_csrf_checks=True)
-        client.post(LOGIN_URL, {"email": user_a.email, "password": password}, format="json")
+        client.force_login(user_a)
 
         response = client.post(
             "/api/sites/", {"name": "No Token", "slug": "no-token"}, format="json"
