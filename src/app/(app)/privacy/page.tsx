@@ -3,8 +3,8 @@ import { LegalPage } from "@/components/site/legal-page";
 import { CONTACT_EMAIL, OPERATOR_LOCATION, OPERATOR_NAME } from "@/lib/operator";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Postly",
-  description: "What Postly collects, why, who it is shared with, and how to have it deleted.",
+  title: "Privacy Policy — Codomain",
+  description: "What Codomain collects, why, who it is shared with, and how to have it deleted.",
 };
 
 /*
@@ -22,17 +22,17 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      summary="Postly collects what it needs to run your blog and email your readers, and nothing else. There are no ads, no analytics scripts and no selling of data — ever."
+      summary="Codomain collects what it needs to run your blog and email your readers, and nothing else. There are no ads, no analytics scripts and no selling of data — ever."
     >
       <h2>Who we are</h2>
       <p>
-        Postly is run by {OPERATOR_NAME}, an individual based in{" "}
-        {OPERATOR_LOCATION}. In this policy, “Postly”, “we” and “us” mean
+        Codomain is run by {OPERATOR_NAME}, an individual based in{" "}
+        {OPERATOR_LOCATION}. In this policy, “Codomain”, “we” and “us” mean
         them. For anything about your data, write to{" "}
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
       </p>
 
-      <h2>If you have a Postly account</h2>
+      <h2>If you have a Codomain account</h2>
       <p>We store:</p>
       <ul>
         <li>
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
 
       <h2>If you subscribe to a blog</h2>
       <p>
-        When you subscribe to a blog hosted on Postly we store your email
+        When you subscribe to a blog hosted on Codomain we store your email
         address, which blog it is for, whether you have confirmed, and when you
         subscribed, confirmed or left. We use it for one thing: emailing you
         when that blog publishes a post.
@@ -76,18 +76,18 @@ export default function PrivacyPage() {
         <li>
           The writer of the blog can see your address and export their
           subscriber list. They are responsible for how they use it once it
-          leaves Postly.
+          leaves Codomain.
         </li>
         <li>
           If you unsubscribe, or an email to you bounces or is marked as spam,
           we keep a record of that so we never email you again from that
-          blog — or, after a bounce or spam report, from any blog on Postly.
+          blog — or, after a bounce or spam report, from any blog on Codomain.
         </li>
       </ul>
 
       <h2>Cookies</h2>
       <p>
-        Published blogs set no cookies for readers. The Postly website and
+        Published blogs set no cookies for readers. The Codomain website and
         dashboard use three, all strictly necessary:
       </p>
       <ul>
@@ -105,7 +105,7 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
-        Your light or dark mode choice for the Postly website is saved in
+        Your light or dark mode choice for the Codomain website is saved in
         your browser, not sent to us. We use no analytics, advertising or
         tracking cookies, so there is no cookie banner to dismiss.
       </p>
@@ -113,7 +113,7 @@ export default function PrivacyPage() {
       <h2>Who else handles your data</h2>
       <p>
         We do not sell or rent personal data, and we do not share it for
-        advertising. A few services run parts of Postly for us and process
+        advertising. A few services run parts of Codomain for us and process
         data only to do that:
       </p>
       <ul>
@@ -163,7 +163,7 @@ export default function PrivacyPage() {
 
       <h2>Children</h2>
       <p>
-        Postly is not meant for anyone under 18, and we do not knowingly hold
+        Codomain is not meant for anyone under 18, and we do not knowingly hold
         their data. If you think a child has signed up, tell us and we will
         delete the account.
       </p>

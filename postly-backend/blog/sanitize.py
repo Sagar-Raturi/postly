@@ -4,7 +4,7 @@ Sanitising stored post HTML on its way out to readers.
 A post body is HTML the writer's editor produced, stored verbatim so it can
 be loaded back into the editor unchanged. That is fine while it is only ever
 rendered back to its own author. It stops being fine the moment it is
-rendered to other people on a Postly origin: until Phase 3 gives every blog
+rendered to other people on a Codomain origin: until Phase 3 gives every blog
 its own subdomain, a published blog is served from the same origin as the
 dashboard, so a `<script>` in somebody's post would run with the reading
 writer's own session behind it.

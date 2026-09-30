@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
   /**
    * Serve the API under this app's own origin.
    *
-   * Postly authenticates with a session cookie, and `config/settings/base.py`
+   * Codomain authenticates with a session cookie, and `config/settings/base.py`
    * sets `SESSION_COOKIE_SAMESITE = "Lax"`. Deployed on two *different*
    * registrable domains — the app on Vercel, the API on Render — that
    * combination cannot work:

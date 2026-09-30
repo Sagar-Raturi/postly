@@ -31,7 +31,7 @@ class EmailNotSent(Exception):
 
 class PostlyAccountAdapter(DefaultAccountAdapter):
     """
-    Teaches allauth three Postly-specific things.
+    Teaches allauth three Codomain-specific things.
 
     1. Accounts carry a `display_name`, which the signup serializer collects
        and which allauth's own save_user() knows nothing about.

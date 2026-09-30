@@ -1,9 +1,9 @@
-# Postly — frontend
+# Codomain — frontend
 
 Next.js (App Router) + TypeScript, Tailwind CSS v4, shadcn/ui and Framer
 Motion. Two independent products, served from one app:
 
-**Postly itself** — everything under `src/app/(app)/`:
+**Codomain itself** — everything under `src/app/(app)/`:
 
 - **`/`** — the marketing homepage
 - **`/login`, `/signup`, `/verify-email`, `/forgot-password`,
@@ -19,12 +19,12 @@ Motion. Two independent products, served from one app:
 - **`/{siteSlug}/subscription/confirm`**, **`/{siteSlug}/subscription/unsubscribe`**
   — where the links in subscription emails land
 
-The second is not a section of the first. It has no Postly navbar, no dashboard
+The second is not a section of the first. It has no Codomain navbar, no dashboard
 chrome, no login, no `AuthProvider` and no `ThemeProvider` — which is why the
 product lives in an `(app)` route group rather than at the root. A route group adds no path
 segment, so every URL above is exactly where it looks like it is; what it buys
 is a layout boundary. A stranger reading somebody's blog does not have their
-browser asking the Postly API about a session they do not have — and a reader
+browser asking the Codomain API about a session they do not have — and a reader
 who once put the *marketing site* into dark mode does not thereby restyle
 somebody else's writing, which they did while both providers sat at the root.
 
@@ -71,7 +71,7 @@ rather than being sent.
 ## Testing subdomains locally
 
 Blogs are served at `/{siteSlug}` today and will move to
-`{siteSlug}.postly.com` in Phase 3. You do not need to touch `/etc/hosts` to
+`{siteSlug}.codomain.blog` in Phase 3. You do not need to touch `/etc/hosts` to
 work on that: **`lvh.me` and every subdomain of it resolve to `127.0.0.1`**, so
 <http://sagar.lvh.me:3000> reaches your dev server with `sagar.lvh.me` in the
 `Host` header — which is the only input the subdomain routing will need.
@@ -87,7 +87,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://sagar.lvh.me:3000
 
 Until the routing layer exists, `sagar.lvh.me:3000/sagar` is what serves the
 blog — the host is ignored and the path still carries the slug. Making the host
-carry it is a rewrite in `middleware.ts` mapping `{slug}.postly.com/x` onto
+carry it is a rewrite in `middleware.ts` mapping `{slug}.codomain.blog/x` onto
 `/{slug}/x`, and nothing under `src/app/[siteSlug]/` changes: every file there
 takes `siteSlug` as a parameter and hands it straight to `lib/public-api.ts`.
 
@@ -135,7 +135,7 @@ src/
     error.tsx             error boundary below the root layout ("Try again")
     global-error.tsx      last resort when the root layout itself fails
 
-    (app)/                Postly itself. The route group adds no URL segment.
+    (app)/                Codomain itself. The route group adds no URL segment.
       layout.tsx          Auth + Theme providers — the boundary the blog
                           sits outside of
       page.tsx            homepage — composes the sections in order
@@ -182,7 +182,7 @@ src/
     blog-refresh.ts       Server Action: expire the writer's own blog cache
     request-blog-refresh.ts  coalesces calls to the above, fire-and-forget
     blog-theme.ts         the palettes, and the only place blog colours exist
-    marketing-url.ts      where the "Published with Postly" credit points
+    marketing-url.ts      where the "Published with Codomain" credit points
     operator.ts           operator name, location, contact email
     form-errors.ts        DRF error bodies → per-field messages
     initials.ts, utils.ts
@@ -279,11 +279,11 @@ the body you remember when you cannot remember the title.
 
 **The site link in `dashboard-nav.tsx` is the one place a writer's own address appears.** Not
 the marketing navbar, not the footer, not the account menu: a visitor to
-postly.com is being sold a product, and somebody's personal URL has no business
-there. The chip shows `sagar.postly.com`, which is where the blog will live,
-and both "Copy link" and "View live" use `/sagar`, which is where it lives
-today — the button's job is to hand over a link that opens. Phase 3 collapses
-the two into one string.
+codomain.in is being sold a product, and somebody's personal URL has no business
+there. The chip shows `site.domain` and both "Copy link" and "View live" use
+`site.url`. The backend builds both (`postly-backend/blog/addresses.py`): a
+path on this app today, `sagar.codomain.blog` once `BLOG_DOMAIN` is set, so
+the chip never shows an address that does not open.
 
 **`src/lib/api.ts`** is the only place that talks to Django. It reads
 `NEXT_PUBLIC_API_URL`, throws a typed `ApiError` carrying DRF's field-level
@@ -329,7 +329,7 @@ Server Actions run one at a time per tab and a sleeping free-tier API can take
 the best part of a minute to answer the first.
 
 There is no `generateStaticParams`, for either segment. One for `siteSlug`
-would need a list of every blog on Postly, and no public endpoint hands one
+would need a list of every blog on Codomain, and no public endpoint hands one
 out — it would be a directory of every customer. And a child segment's params
 come from its parent's, so one on `[postSlug]` only ever ran at build time
 with `siteSlug` undefined. Pages render on demand and are then cached.
@@ -393,7 +393,7 @@ A 1180px container, a full-width top bar, and below it a two-column grid:
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│ Sagar Raturi                                      ᴾ Postly│  top bar
+│ Sagar Raturi                                      ᴾ Codomain│  top bar
 │ Software, mountains, and the long way round.              │
 ├───────────────┬───────────────────────────────────────────┤
 │  ( SR )       │  Three Weeks in Spiti Valley              │
@@ -435,7 +435,7 @@ phone with no media query.
 Below 1024px the grid becomes one column and the panel turns into a
 horizontal card above the feed, losing the sticky. Below 640px the avatar
 drops to 64px, the container padding to 20px, and post titles to 24px. The
-Postly mark stays top-right at every width.
+Codomain mark stays top-right at every width.
 
 ### The scales
 
@@ -453,8 +453,8 @@ titles and its body face for prose. Muted text is the theme's
 body colour — not an opacity on black, which goes muddy over a tinted
 background.
 
-Postly appears twice and quietly: a 20px mark top-right in the bar, and a
-"Published with Postly" credit at the foot of the profile panel (which
+Codomain appears twice and quietly: a 20px mark top-right in the bar, and a
+"Published with Codomain" credit at the foot of the profile panel (which
 moves to the bottom of the page when the panel is a horizontal card, so
 there is never more than one visible).
 
@@ -515,7 +515,7 @@ side.
 Anything rendered inside a blog must use only the blog theme's colour
 variables (`--background`, `--foreground`, `--muted`, `--muted-foreground`,
 `--border`, `--brand`). Other Tailwind colours, like `text-destructive`,
-resolve against Postly's own palette and lose contrast on a dark blog theme.
+resolve against Codomain's own palette and lose contrast on a dark blog theme.
 Emphasise an error with `text-foreground` against muted text, not red.
 
 ## Deployment

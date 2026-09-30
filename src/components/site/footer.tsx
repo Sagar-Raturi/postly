@@ -21,7 +21,7 @@ export function Footer() {
               className="inline-block rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               <Logo />
-              <span className="sr-only">Postly home</span>
+              <span className="sr-only">Codomain home</span>
             </Link>
             <p className="mt-4 max-w-xs text-[0.9rem] leading-relaxed text-pretty text-muted-foreground">
               A blog of your own, live in minutes. Built for people who would
@@ -59,7 +59,7 @@ export function Footer() {
 
         <div className="mt-12 border-t border-border pt-7">
           <p className="text-[0.82rem] text-muted-foreground">
-            © {new Date().getFullYear()} Postly. Made for people who write.
+            © {new Date().getFullYear()} Codomain. Made for people who write.
           </p>
         </div>
       </Container>

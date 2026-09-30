@@ -64,7 +64,7 @@ export function Hero() {
 
           <Rise delay={160}>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-pretty text-muted-foreground">
-              Postly gives every writer a fast, beautiful blog at an address of
+              Codomain gives every writer a fast, beautiful blog at an address of
               their own. Email subscribers, themes that stay readable, and not
               a line of code — your words stay yours.
             </p>
@@ -100,7 +100,7 @@ export function Hero() {
 
         <Rise delay={380}>
           <div className="relative mx-auto mt-14 max-w-5xl sm:mt-16">
-            <BrowserFrame url="postly.com/editor/writing-in-public">
+            <BrowserFrame url="codomain.in/editor/writing-in-public">
               <EditorScreen />
             </BrowserFrame>
 
@@ -108,7 +108,7 @@ export function Hero() {
               <span className="flex size-4 items-center justify-center rounded-full bg-brand text-brand-foreground">
                 <Check aria-hidden className="size-2.5" />
               </span>
-              Live at nina.postly.com
+              Live at codomain.in/nina
             </FloatingChip>
 
             <FloatingChip className="-bottom-5 -left-6">

@@ -2,7 +2,7 @@
 The reader-facing subscription flow: subscribe, confirm, unsubscribe.
 
 Everything here runs on `api`, the anonymous client, because a subscriber
-has no Postly account. The tests are grouped by the property they defend
+has no Codomain account. The tests are grouped by the property they defend
 rather than by endpoint, because the properties are the reason the code is
 shaped the way it is:
 

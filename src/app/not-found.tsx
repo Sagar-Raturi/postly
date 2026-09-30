@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { StatusPage } from "@/components/status-page";
 
 export const metadata: Metadata = {
-  title: "Page not found — Postly",
+  title: "Page not found — Codomain",
 };
 
 /**

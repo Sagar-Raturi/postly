@@ -21,8 +21,8 @@ export function Pricing() {
         <Reveal>
           <SectionHeading
             label="Pricing"
-            title="Free while Postly is young."
-            description="Everything Postly does today is included, with no card and no trial clock. Paid plans come later, for features that do not exist yet — never by taking these away."
+            title="Free while Codomain is young."
+            description="Everything Codomain does today is included, with no card and no trial clock. Paid plans come later, for features that do not exist yet — never by taking these away."
             align="center"
             className="mx-auto max-w-2xl"
           />

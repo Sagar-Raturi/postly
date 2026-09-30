@@ -23,8 +23,8 @@ from .models import Subscriber
 
 # Namespaces the signature. Without a distinct salt, a token minted here
 # would verify anywhere else in the project that unsigns with the default,
-# and vice versa — the salt is what makes this signature mean "a Postly
-# subscription confirmation" rather than merely "signed by Postly".
+# and vice versa — the salt is what makes this signature mean "a Codomain
+# subscription confirmation" rather than merely "signed by Codomain".
 CONFIRM_SALT = "blog.subscriptions.confirm"
 
 # Two days. Long enough to survive a weekend and a spam folder, short
@@ -156,7 +156,7 @@ def suppress_address(email: str, *, reason: str) -> int:
     about one writer's post, and it is one writer's list they meant to
     leave. But the complaint is not recorded against that writer by the
     mailbox provider — it is recorded against the domain every blog on
-    Postly sends from. A reader who has called that domain's mail spam
+    Codomain sends from. A reader who has called that domain's mail spam
     once and keeps receiving it from four other blogs will press the button
     four more times, and the rate that gets a domain filtered is measured
     per domain. So the address is suppressed everywhere. The cost is a

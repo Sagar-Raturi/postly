@@ -1,6 +1,6 @@
-# Postly backend
+# Codomain backend
 
-Django + DRF API behind Postly: accounts, blogs, posts, and per-blog email
+Django + DRF API behind Codomain: accounts, blogs, posts, and per-blog email
 subscriptions. Every private endpoint requires a signed-in user and only ever
 returns that user's own rows. A small anonymous API serves published blogs and
 the subscribe flow to readers, and one webhook takes delivery events from the
@@ -20,7 +20,7 @@ frontend holds nothing.
 The reasoning, since it constrains everything else here: a token in
 `localStorage` is readable by any script on the page, so a single XSS bug is a
 stolen session. An httpOnly cookie cannot be read by JavaScript at all. Both
-halves of Postly are first-party, so there is no cross-origin requirement that
+halves of Codomain are first-party, so there is no cross-origin requirement that
 would justify the trade.
 
 What that means in practice:
@@ -285,7 +285,7 @@ supplies a `WWW-Authenticate` header, because DRF otherwise downgrades the
 status and the frontend cannot tell "signed out" from "not allowed".
 
 **`/api/public/…` is deliberately open**, and it is the only thing that is. It
-serves published blogs to readers who have no Postly account, it is read-only,
+serves published blogs to readers who have no Codomain account, it is read-only,
 and it lives in its own three files (`public_urls.py`, `public_views.py`,
 `public_serializers.py`) so the entire public surface can be read end to end in
 a couple of minutes.
@@ -469,7 +469,7 @@ Notes on behaviour worth knowing:
 
 Readers can subscribe to a blog once its writer turns on
 `Site.subscriptions_enabled`. Every blog sends from one shared domain, so a
-single blog's bad list hurts delivery for everyone, including Postly's own
+single blog's bad list hurts delivery for everyone, including Codomain's own
 password-reset mail. That is why double opt-in, unsubscribe and bounce
 handling come before any convenience feature, and why there is no bulk import.
 
@@ -624,8 +624,9 @@ generates the matching pair. There is a test pinning this
 
 ## Phase 3 — not built
 
-- Subdomain middleware resolving `<slug>.postly.com` to a `Site` (there is a
-  placeholder in the `MIDDLEWARE` list) — `Site.domain` already builds the name.
+- Subdomain middleware resolving `<slug>.codomain.blog` to a `Site` (there is a
+  placeholder in the `MIDDLEWARE` list) — `blog/addresses.py` already builds the
+  name once `BLOG_DOMAIN` is set.
   The public API does not need it: the slug is a path parameter, and where the
   frontend gets that slug is the only thing that changes. See the note at the
   top of `blog/public_urls.py`.

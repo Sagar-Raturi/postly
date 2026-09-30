@@ -2,7 +2,7 @@
 The public, anonymous half of the API.
 
 Everything here runs on `api` — the unauthenticated client — because that is
-the whole point of these endpoints: a reader with no Postly account has to be
+the whole point of these endpoints: a reader with no Codomain account has to be
 able to read a blog, and must not be able to reach anything else.
 
 Two properties are load-bearing and get their own tests:

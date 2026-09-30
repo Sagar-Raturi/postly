@@ -15,7 +15,7 @@ const CHECK_DELAY_MS = 400;
 type Availability =
   | { state: "idle" }
   | { state: "checking" }
-  | { state: "free" }
+  | { state: "free"; domain: string }
   | { state: "taken"; reason: string };
 
 /**
@@ -29,6 +29,12 @@ type SlugVerdict = {
   slug: string;
   status: "free" | "taken" | "unknown";
   reason?: string;
+  /**
+   * The full address, as the API builds it. The form never spells out a
+   * domain itself: where blogs live is a backend setting (BLOG_DOMAIN), and
+   * a second copy here would drift from it the day blogs move.
+   */
+  domain?: string;
 };
 
 /** Best-effort suggestion, then the API has the final word on the details. */
@@ -95,6 +101,7 @@ export function OnboardingForm() {
             slug,
             status: result.available ? "free" : "taken",
             reason: result.reason ?? "That address is taken.",
+            domain: result.domain,
           });
         } catch {
           // A failed check should not block the form; submitting will get
@@ -117,7 +124,7 @@ export function OnboardingForm() {
     : verdict?.slug !== slug
       ? { state: "checking" }
       : verdict.status === "free"
-        ? { state: "free" }
+        ? { state: "free", domain: verdict.domain ?? slug }
         : verdict.status === "taken"
           ? { state: "taken", reason: verdict.reason ?? "That address is taken." }
           : { state: "idle" };
@@ -259,7 +266,13 @@ function SlugStatus({
             "text-muted-foreground",
         )}
       >
-        {availability.state === "taken" ? availability.reason : `${slug}.postly.com`}
+        {availability.state === "taken"
+          ? availability.reason
+          : availability.state === "free"
+            ? availability.domain
+            : availability.state === "checking"
+              ? "Checking…"
+              : slug}
       </span>
     </div>
   );

@@ -1,4 +1,4 @@
-"""WSGI config for the Postly backend."""
+"""WSGI config for the Codomain backend."""
 
 import os
 

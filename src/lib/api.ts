@@ -1,5 +1,5 @@
 /**
- * Typed client for the Postly Django API.
+ * Typed client for the Codomain Django API.
  *
  * Authentication is a session cookie, set by the backend and marked
  * httpOnly — so there is no token here to read, store, or attach. Every
@@ -59,7 +59,10 @@ export interface Site {
   /** One line under the blog's name in its masthead. May be empty. */
   tagline: string;
   description: string;
+  /** Where readers find the blog, without the scheme: `www.codomain.in/nina`. */
   domain: string;
+  /** The same address as an absolute URL, for links and copying. */
+  url: string;
   /** How the published blog is drawn — see `src/lib/blog-theme.ts`. */
   theme: ThemeName;
   appearance: Appearance;

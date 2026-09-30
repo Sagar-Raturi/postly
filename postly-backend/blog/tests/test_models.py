@@ -9,8 +9,11 @@ class TestSite:
     def test_str_is_the_name(self, site):
         assert str(site) == "Small Hours"
 
-    def test_domain_is_built_from_the_slug(self, site):
-        assert site.domain == "small-hours.postly.com"
+    def test_domain_is_built_from_the_slug(self, site, settings):
+        settings.FRONTEND_URL = "https://www.codomain.in"
+        settings.BLOG_DOMAIN = ""
+        assert site.domain == "www.codomain.in/small-hours"
+        assert site.url == "https://www.codomain.in/small-hours"
 
 
 class TestPostSlug:

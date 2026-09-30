@@ -7,10 +7,10 @@ import { marketingLinkProps } from "@/lib/marketing-url";
  * quiet mark saying what it was built with.
  *
  * The balance between those two is the whole design of this component. The
- * writer's name is the only thing here set in the display face; Postly's
+ * writer's name is the only thing here set in the display face; Codomain's
  * mark is 20px tall, muted, and brightens on hover — a credit in the way a
  * printer's mark on the last page of a book is a credit. Anything louder
- * would be Postly advertising on somebody else's site, using their readers'
+ * would be Codomain advertising on somebody else's site, using their readers'
  * attention to do it.
  */
 export function BlogTopBar({
@@ -50,7 +50,7 @@ export function BlogTopBar({
           */}
           <a
             {...marketingLinkProps()}
-            aria-label="Published with Postly"
+            aria-label="Published with Codomain"
             className="group mt-1 inline-flex shrink-0 items-center gap-2 rounded-sm text-muted-foreground opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
           >
             <span
@@ -65,7 +65,7 @@ export function BlogTopBar({
               aria-hidden
               className="hidden text-[13px] leading-none font-medium tracking-[-0.005em] sm:inline"
             >
-              Postly
+              Codomain
             </span>
           </a>
         </div>

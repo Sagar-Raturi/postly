@@ -28,10 +28,13 @@ class TestSiteEndpoints:
         assert response.status_code == 201
         assert response.json()["posts_count"] == 0
 
-    def test_retrieve(self, api_a, site):
+    def test_retrieve(self, api_a, site, settings):
+        settings.FRONTEND_URL = "https://www.codomain.in"
+        settings.BLOG_DOMAIN = ""
         response = api_a.get(f"{SITES_URL}{site.pk}/")
         assert response.status_code == 200
-        assert response.json()["domain"] == "small-hours.postly.com"
+        assert response.json()["domain"] == "www.codomain.in/small-hours"
+        assert response.json()["url"] == "https://www.codomain.in/small-hours"
 
     def test_patch_updates_a_field(self, api_a, site):
         response = api_a.patch(

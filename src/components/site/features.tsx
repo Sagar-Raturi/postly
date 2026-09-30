@@ -24,7 +24,7 @@ export function Features() {
                 <span className="italic">Nothing it doesn&rsquo;t.</span>
               </>
             }
-            description="Postly is deliberately small. Each of these earns its place by removing a decision you would otherwise have to make."
+            description="Codomain is deliberately small. Each of these earns its place by removing a decision you would otherwise have to make."
             align="center"
             className="mx-auto max-w-2xl"
           />

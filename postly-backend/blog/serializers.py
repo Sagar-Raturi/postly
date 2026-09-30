@@ -11,6 +11,9 @@ class SiteSerializer(serializers.ModelSerializer):
     # in the viewset's perform_create(), never accepted from the body.
     posts_count = serializers.SerializerMethodField()
     domain = serializers.CharField(read_only=True)
+    # Absolute, so the dashboard's "view" and "copy" links keep working
+    # unchanged when blogs move from a path to a subdomain of their own.
+    url = serializers.CharField(read_only=True)
 
     class Meta:
         model = Site
@@ -21,6 +24,7 @@ class SiteSerializer(serializers.ModelSerializer):
             "tagline",
             "description",
             "domain",
+            "url",
             "theme",
             "appearance",
             "font_pairing",

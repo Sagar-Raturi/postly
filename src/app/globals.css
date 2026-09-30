@@ -357,7 +357,7 @@
    Both surfaces show the same markup, so both use this.
 
    The typography plugin ships its own grey scale; this replaces it
-   with Postly's tokens, which already flip in dark mode, so there is
+   with Codomain's tokens, which already flip in dark mode, so there is
    no `prose-invert` to remember. Size and measure are left to the
    caller: the blog reads at 19px, the dashboard a little tighter.
 ---------------------------------------------------------------- */

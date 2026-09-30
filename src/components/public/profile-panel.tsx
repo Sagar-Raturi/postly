@@ -148,7 +148,7 @@ export function ProfilePanel({
           {...marketingLinkProps()}
           className="rounded-sm text-[13px] text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
         >
-          Published with Postly
+          Published with Codomain
         </a>
       </div>
     </aside>
