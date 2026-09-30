@@ -243,8 +243,18 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   // Django checks this header against the CSRF cookie. The cookie is
   // readable by design; the session cookie, which is the actual credential,
   // is httpOnly and never passes through JavaScript.
+  //
+  // The signed-out forms (login, signup, forgot and reset password) are
+  // checked as well, and they are the ones most likely to run before the
+  // cookie exists: a fast submit that beats AuthProvider's mount-time
+  // ensureCsrf(), or a visitor who cleared their cookies. So when it is
+  // missing, fetch it first rather than send a request that can only 403.
   if (!SAFE_METHODS.has(method)) {
-    const csrfToken = readCookie("csrftoken");
+    let csrfToken = readCookie("csrftoken");
+    if (!csrfToken) {
+      await ensureCsrf();
+      csrfToken = readCookie("csrftoken");
+    }
     if (csrfToken) headers["X-CSRFToken"] = csrfToken;
   }
 
@@ -364,9 +374,11 @@ export interface SignupInput {
 /**
  * Asks the backend to set a CSRF cookie.
  *
- * Logging in refreshes it anyway, so this only matters for the case where
- * a visitor has a live session but no CSRF cookie — cleared site data, say.
- * Without it every save would fail with a 403 and no way to recover.
+ * Every unsafe request needs it, signed in or not — the signed-out forms
+ * are CSRF-checked too (postly-backend/accounts/csrf.py). AuthProvider calls
+ * this on mount, and request() calls it again whenever the cookie is
+ * missing at the moment it is needed: cleared site data, say, which would
+ * otherwise leave every save failing with a 403 and no way to recover.
  */
 export async function ensureCsrf(): Promise<void> {
   try {

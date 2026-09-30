@@ -37,6 +37,16 @@ What that means in practice:
 Every frontend request sends `credentials: "include"`; unsafe methods also
 send `X-CSRFToken`.
 
+CSRF is checked on the signed-out endpoints too — login, signup, password
+reset and confirm, resend verification. DRF only checks it inside
+`SessionAuthentication`, which skips anonymous requests, so those views carry
+`EnforceCsrfMixin` from `accounts/csrf.py`; without it any site could log a
+visitor into an attacker's account. A POST there without the `csrftoken`
+cookie and matching header, or from an `Origin` outside
+`CSRF_TRUSTED_ORIGINS`, is a **403 `CSRF Failed`**. A wrong-password 400 is
+therefore no evidence either way that CSRF is on — test with a foreign
+`Origin` instead.
+
 ### The flow
 
 ```

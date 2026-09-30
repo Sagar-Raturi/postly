@@ -23,7 +23,7 @@ from allauth.account.utils import complete_signup
 from allauth.core import ratelimit
 from allauth.core.exceptions import ImmediateHttpResponse
 from dj_rest_auth.app_settings import api_settings
-from dj_rest_auth.views import LoginView, PasswordResetView
+from dj_rest_auth.views import LoginView, PasswordResetConfirmView, PasswordResetView
 from django.contrib.auth import logout
 from django.db import transaction
 from django.http import JsonResponse
@@ -39,6 +39,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .adapters import EmailNotSent
+from .csrf import EnforceCsrfMixin
 from .serializers import AvatarSerializer, UserSerializer
 
 logger = logging.getLogger(__name__)
@@ -66,15 +67,27 @@ SIGNUP_EMAIL_FAILED = (
 )
 
 
-class ThrottledLoginView(LoginView):
+# The four views below, and ResendVerificationView, are used signed-out and
+# so get no CSRF check from SessionAuthentication. EnforceCsrfMixin puts it
+# back — see accounts/csrf.py for what was open without it.
+
+
+class ThrottledLoginView(EnforceCsrfMixin, LoginView):
     throttle_scope = "auth_login"
 
 
-class ThrottledPasswordResetView(PasswordResetView):
+class ThrottledPasswordResetView(EnforceCsrfMixin, PasswordResetView):
     throttle_scope = "auth_password_reset"
 
 
-class SignupView(CreateAPIView):
+class CsrfPasswordResetConfirmView(EnforceCsrfMixin, PasswordResetConfirmView):
+    """
+    dj-rest-auth's confirm view, unchanged but for the CSRF check. It keeps
+    the shared `dj_rest_auth` throttle scope it always had.
+    """
+
+
+class SignupView(EnforceCsrfMixin, CreateAPIView):
     """
     POST /api/auth/signup/
 
@@ -167,7 +180,7 @@ class ResendVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
-class ResendVerificationView(APIView):
+class ResendVerificationView(EnforceCsrfMixin, APIView):
     """
     POST /api/auth/resend-verification/
 
@@ -360,9 +373,12 @@ def csrf_token_view(request):
     """
     Hands the frontend a CSRF cookie.
 
-    Logging in refreshes the cookie on its own (django.contrib.auth.login
-    rotates the token), so this is the recovery path: if a visitor clears
-    cookies mid-session, every unsafe request would 403 with no way back.
-    AuthProvider calls this on mount.
+    Needed before the first unsafe request of any kind, including the
+    signed-out ones — login and signup are CSRF-checked too, see csrf.py.
+    AuthProvider calls this on mount, and lib/api.ts calls it again whenever
+    it is about to send an unsafe request and finds no cookie, so a visitor
+    who clears cookies mid-session is not left with every request 403ing.
+    Logging in rotates the token (django.contrib.auth.login), and the new
+    cookie comes back on that response.
     """
     return JsonResponse({"detail": "CSRF cookie set."})

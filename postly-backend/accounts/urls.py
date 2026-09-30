@@ -3,6 +3,7 @@ from django.views.generic import TemplateView
 
 from .views import (
     AvatarView,
+    CsrfPasswordResetConfirmView,
     DeleteAccountView,
     ResendVerificationView,
     SignupView,
@@ -13,11 +14,16 @@ from .views import (
 )
 
 urlpatterns = [
-    # Our throttled views have to be listed before dj_rest_auth.urls, which
-    # registers the unthrottled originals at the same paths.
+    # Our throttled and CSRF-checked views have to be listed before
+    # dj_rest_auth.urls, which registers the originals at the same paths.
     path("signup/", SignupView.as_view(), name="rest_register"),
     path("login/", ThrottledLoginView.as_view(), name="rest_login"),
     path("password/reset/", ThrottledPasswordResetView.as_view(), name="rest_password_reset"),
+    path(
+        "password/reset/confirm/",
+        CsrfPasswordResetConfirmView.as_view(),
+        name="rest_password_reset_confirm",
+    ),
     path(
         "resend-verification/",
         ResendVerificationView.as_view(),
@@ -29,7 +35,7 @@ urlpatterns = [
     # `user/` is registered there, and Django takes the first match.
     path("user/avatar/", AvatarView.as_view(), name="user_avatar"),
     path("user/delete/", DeleteAccountView.as_view(), name="user_delete"),
-    # logout, user, password/change and password/reset/confirm.
+    # logout, user and password/change.
     path("", include("dj_rest_auth.urls")),
     # allauth reverses these two internally while completing a signup. They
     # render nothing: every page a person sees lives in the Next.js app.
