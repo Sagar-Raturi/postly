@@ -35,7 +35,14 @@ only ever talks to the Vercel origin. CORS is no longer load-bearing;
 `CSRF_TRUSTED_ORIGINS` and `FRONTEND_URL` still are.
 
 - [x] 5.1 Origins on Render — `CSRF_TRUSTED_ORIGINS` + `FRONTEND_URL` set; CORS unneeded behind the proxy
-- [x] 5.2 Redeploy — `352857f` live; POST login through proxy returns Django 400 (not CSRF 403)
+- [x] 5.2 Redeploy — `352857f` live; POST login through proxy returns Django 400
+  - **Correction (2026-09-30):** that 400 did *not* prove CSRF works. DRF only
+    checked CSRF for signed-in sessions, so anonymous login/signup/reset
+    answered the same 400 even with `Origin: https://evil.example`. Fixed by
+    `EnforceCsrfMixin` (`postly-backend/accounts/csrf.py`). The real check
+    after deploy: a login POST through the proxy with a foreign `Origin`, or
+    with no `csrftoken` cookie, must return **403 `CSRF Failed`**; the app's
+    own login must still work.
 
 ## Phase 6 — Smoke test the live product
 - [x] 6.1 Log in on the Vercel URL — confirmed by user; proxy + first-party cookies working

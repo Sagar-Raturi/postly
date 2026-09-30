@@ -226,7 +226,10 @@ Because the login endpoint returns 204 and nothing else, `login()` re-reads the
 account before it resolves.
 
 **`src/lib/api.ts`** sends `credentials: "include"` on every request and, for
-unsafe methods, copies the `csrftoken` cookie into `X-CSRFToken`. A 401 fires a
+unsafe methods, copies the `csrftoken` cookie into `X-CSRFToken` — fetching
+the cookie from `/api/auth/csrf/` first if it is missing, because the
+signed-out forms are CSRF-checked as well and are the likeliest to run before
+AuthProvider's mount-time fetch has finished. A 401 fires a
 single module-level handler that `AuthProvider` registers, so one place decides
 what an expired session means — clear the user, go to `/login`. The mount-time
 "who am I" call is exempt, since 401 is its normal answer for a signed-out
