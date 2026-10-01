@@ -60,10 +60,13 @@ Stage A — app on its own domain, mail working (blogs stay at `/<slug>`):
   - Cloudflare zone added (Free), Hostinger parking A/CNAME deleted. Assigned NS: `rene.ns.cloudflare.com`, `savanna.ns.cloudflare.com` (replacing `aurora`/`nebula.dns-parking.com`). Hostinger blocked NS changes for the first ~24h after registration; by 2026-09-30 the `.in` registry shows the Cloudflare NS, DNSSEC off. Waiting on Cloudflare to show Active
 - [x] 7.3 App domain → Vercel — two CNAMEs (`@` and `www` → `dcbaa0499d45fffd.vercel-dns-017.com`), DNS only. Verified 2026-09-30: `https://www.codomain.in` 200 with a Let's Encrypt cert, `codomain.in` 308 → www, `/sagar` 200, `/api/auth/user/` 401 through the proxy
   - Both added to the Vercel project 2026-09-30. **Main address is `www.codomain.in`**; `codomain.in` 308-redirects to it. So `FRONTEND_URL` / `CSRF_TRUSTED_ORIGINS` = `https://www.codomain.in`
-- [ ] 7.4 Make the domain configurable (code) — done on branch `rename-to-codomain` with the Postly → Codomain rename: `blog/addresses.py` + `BLOG_DOMAIN` (leave unset until 7.9), `metadataBase` → `https://www.codomain.in`, `env_list()` trims Render host/origin lists. Tick when merged and deployed
-- [ ] 7.5 Cloudflare Email Routing: `contact@` → Gmail
-- [ ] 7.6 Resend: verify app domain + `mail.` subdomain, DMARC, webhook
-- [ ] 7.7 Switch Render/Vercel settings, redeploy both, smoke test with a non-Resend address  ← current
+- [x] 7.4 Make the domain configurable — merged in PR #7 (`0a85a10`) with the Postly → Codomain rename; production shows "Codomain" titles 2026-09-30. `BLOG_DOMAIN` stays unset until 7.9
+- [x] 7.5 Cloudflare Email Routing: `contact@` → Gmail — enabled 2026-10-01 (3 MX `route1-3.mx.cloudflare.net`, SPF `include:_spf.mx.cloudflare.net`, DKIM `cf2024-1._domainkey`), catch-all left disabled. Test mail arrived but in Gmail spam (new domain + new Gmail + forwarding); no DMARC record yet
+- [ ] 7.6 Resend: verify app domain + `mail.` subdomain, DMARC, webhook  ← current
+  - `codomain.in` **Verified** in Resend 2026-10-01 (region Tokyo/ap-northeast-1; Receiving off). Records: TXT `resend._domainkey`, CNAME `rsend` → `rsend-apne1.forge.rmta.net`, CNAME `send` → `send.forge.rmta.net` (Resend now uses CNAMEs, not MX+TXT on `send`). Still to do: `mail.codomain.in`, webhook
+  - 2026-10-01: `DEFAULT_FROM_EMAIL=Codomain <hello@codomain.in>` added on Render. Signup still 503'd: Render log shows `django.core.mail.backends.smtp` → `TimeoutError` — **`RESEND_API_KEY` was never set on Render**, so it fell back to SMTP (blocked on free tier). Fix: create a sending key scoped to codomain.in, add `RESEND_API_KEY`; then `EMAIL_HOST`/`EMAIL_PORT`/`EMAIL_USE_TLS` can go
+  - DMARC done early 2026-10-01: `_dmarc.codomain.in` = `v=DMARC1; p=none; rua=mailto:contact@codomain.in` (live). Forwarded test mail now handled (Not spam + Gmail filter)
+- [ ] 7.7 Switch Render/Vercel settings, redeploy both, smoke test with a non-Resend address
   - Origin half done 2026-09-30: user set `CSRF_TRUSTED_ORIGINS` (+ `https://www.codomain.in`) and `FRONTEND_URL=https://www.codomain.in` on Render. Logged-out requests can't prove CSRF (DRF skips it for anonymous users) — user to confirm by logging in on www.codomain.in, saving a post edit, and logging out. Mail settings wait for 7.5–7.6
 Stage B — blogs on `<slug>.<blog domain>`:
 - [ ] 7.8 Host-based routing + blog links (code)
