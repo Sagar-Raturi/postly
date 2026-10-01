@@ -14,6 +14,7 @@ from allauth.account.adapter import get_adapter
 from allauth.account.forms import default_token_generator
 from allauth.account.models import EmailAddress
 from allauth.account.utils import setup_user_email, user_pk_to_url_str
+from dj_rest_auth.serializers import LoginSerializer as BaseLoginSerializer
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -25,6 +26,35 @@ from .adapters import EmailNotSent
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
+
+
+class EmailNotVerified(Exception):
+    """
+    The password was right, but the account's address is not confirmed.
+
+    Deliberately not a ValidationError. DRF turns any ValidationError raised
+    during validation into a generic `non_field_errors` list, and the login
+    view needs to tell this case apart from a wrong password: it is the one
+    failed login that has something better to do than show an error. See
+    ThrottledLoginView.
+    """
+
+    def __init__(self, user):
+        super().__init__("Email address not verified")
+        self.user = user
+
+
+class LoginSerializer(BaseLoginSerializer):
+    """dj-rest-auth's login, with an unverified address raised as its own
+    exception rather than the stock "E-mail is not verified." message."""
+
+    @staticmethod
+    def validate_email_verification_status(user, email=None):
+        # The same test dj-rest-auth makes, which runs only after the
+        # password has been checked: nobody learns an address is unconfirmed
+        # without knowing the account's password.
+        if not user.emailaddress_set.filter(email=user.email, verified=True).exists():
+            raise EmailNotVerified(user)
 
 
 class SignupSerializer(serializers.Serializer):
@@ -45,8 +75,12 @@ class SignupSerializer(serializers.Serializer):
             User.objects.filter(email__iexact=email).exists()
             or EmailAddress.objects.filter(email__iexact=email).exists()
         ):
+            # The second sentence is the way out for somebody whose first
+            # confirmation email went missing: signing in with an
+            # unconfirmed address sends a new link (ThrottledLoginView).
             raise serializers.ValidationError(
-                "An account with this address already exists."
+                "An account with this address already exists. Log in — if "
+                "you never confirmed it, we'll send you a new link."
             )
         return email
 

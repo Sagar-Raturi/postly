@@ -40,7 +40,7 @@ from rest_framework.views import APIView
 
 from .adapters import EmailNotSent
 from .csrf import EnforceCsrfMixin
-from .serializers import AvatarSerializer, UserSerializer
+from .serializers import AvatarSerializer, EmailNotVerified, UserSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +72,74 @@ SIGNUP_EMAIL_FAILED = (
 # back — see accounts/csrf.py for what was open without it.
 
 
+# The login answer for a right password on an unconfirmed address. It tells
+# the person what happens next, not only what went wrong.
+EMAIL_NOT_VERIFIED = (
+    "Your email address isn't confirmed yet. We've sent you a new "
+    "confirmation link: follow it, then sign in."
+)
+
+
 class ThrottledLoginView(EnforceCsrfMixin, LoginView):
+    """
+    POST /api/auth/login/
+
+    dj-rest-auth's login, plus a way out for an account whose address was
+    never confirmed.
+
+    Verification is mandatory, so such an account cannot sign in. Before
+    this, the only way to a fresh link was a resend button reachable from
+    the screen shown straight after signup. Somebody whose first email was
+    lost, landed in spam, expired, or carried a broken link (production once
+    built links from a misconfigured FRONTEND_URL) had no route back at all:
+    signing up again said the address was taken, and signing in said it was
+    not verified and nothing more. allauth's own login flow resends in this
+    situation; this does the same.
+
+    So a right password on an unconfirmed address sends a new link and
+    answers 400 with `code: "email_not_verified"`, which the login form
+    turns into the "check your inbox" screen. Only somebody who knows the
+    password gets this far, which is also all dj-rest-auth's stock message
+    revealed. The send shares allauth's per-address cooldown, one email in
+    three minutes, so repeated attempts cannot flood the inbox; inside the
+    cooldown the earlier link is still on its way and still good.
+    """
+
     throttle_scope = "auth_login"
+
+    def post(self, request, *args, **kwargs):
+        try:
+            return super().post(request, *args, **kwargs)
+        except EmailNotVerified as exc:
+            self.send_new_confirmation(exc.user)
+            return Response(
+                {"detail": EMAIL_NOT_VERIFIED, "code": "email_not_verified"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    def send_new_confirmation(self, user) -> None:
+        address = EmailAddress.objects.filter(
+            user=user, email__iexact=user.email, verified=False
+        ).first()
+        if address is None:
+            return
+
+        # allauth keys this cooldown on the lowercased address, as signup's
+        # rollback does when it clears it.
+        if not ratelimit.consume(
+            self.request._request, action="confirm_email", key=address.email.lower()
+        ):
+            return
+
+        try:
+            address.send_confirmation(self.request._request)
+        except EmailNotSent:
+            # The person still gets the same answer; the verify page they
+            # land on can try again. The log is the record of why.
+            logger.exception(
+                "Could not send a confirmation email at login for address %s",
+                address.pk,
+            )
 
 
 class ThrottledPasswordResetView(EnforceCsrfMixin, PasswordResetView):

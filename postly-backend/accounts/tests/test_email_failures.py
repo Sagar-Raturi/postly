@@ -162,3 +162,21 @@ class TestAdapter:
                 PostlyAccountAdapter().send_mail(
                     "account/email/no_such_template", "someone@example.com", {}
                 )
+
+
+class TestLoginBeforeConfirming:
+    def test_a_failed_send_still_gives_the_usual_answer(
+        self, api, make_user, password, mail_is_down
+    ):
+        """The verify page the person lands on can try again; a 500 here
+        would only hide the screen that offers it."""
+        make_user("late@example.com", verified=False)
+
+        response = api.post(
+            "/api/auth/login/",
+            {"email": "late@example.com", "password": password},
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert response.json()["code"] == "email_not_verified"

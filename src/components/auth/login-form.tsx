@@ -7,8 +7,24 @@ import { Button } from "@/components/ui/button";
 import { AuthLink, AuthShell, FormError } from "@/components/auth/auth-shell";
 import { Field, submitClasses } from "@/components/auth/field";
 import { useAuth } from "@/components/auth-provider";
-import { getCurrentSite } from "@/lib/api";
+import { ApiError, getCurrentSite } from "@/lib/api";
 import { parseApiErrors } from "@/lib/form-errors";
+
+/**
+ * The login API's answer for a right password on an address that was never
+ * confirmed. It has already sent a new link by then (ThrottledLoginView in
+ * postly-backend/accounts/views.py), so this is not an error to show but a
+ * screen to move to.
+ */
+function isUnconfirmedAddress(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    err.status === 400 &&
+    typeof err.data === "object" &&
+    err.data !== null &&
+    (err.data as { code?: unknown }).code === "email_not_verified"
+  );
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -43,6 +59,14 @@ export function LoginForm() {
       const site = await getCurrentSite().catch(() => null);
       router.replace(next ?? (site ? "/dashboard" : "/onboarding"));
     } catch (err) {
+      if (isUnconfirmedAddress(err)) {
+        // Left "submitting" on purpose: the form is on its way out.
+        router.push(
+          `/verify-email?email=${encodeURIComponent(email.trim())}&reason=unconfirmed`,
+        );
+        return;
+      }
+
       const parsed = parseApiErrors(err, "That email and password did not match.");
       setErrors(parsed.fields);
       setFormError(parsed.form ?? "That email and password did not match.");

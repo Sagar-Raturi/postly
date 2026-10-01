@@ -387,7 +387,7 @@ without an avatar gets an initials circle in their blog's accent colour.
 | Method | Path | Notes |
 | --- | --- | --- |
 | `POST` | `/api/auth/signup/` | `email`, `display_name`, `password1`, `password2`. 503 with `detail` if the confirmation email cannot be sent; nothing is saved |
-| `POST` | `/api/auth/login/` | 204 plus a session cookie; no token in the body |
+| `POST` | `/api/auth/login/` | 204 plus a session cookie; no token in the body. A right password on an unconfirmed address sends a new confirmation link (one per address per 3 minutes) and answers 400 with `code: "email_not_verified"` |
 | `POST` | `/api/auth/logout/` | `GET` is a 405 |
 | `GET` `PATCH` | `/api/auth/user/` | current account. `PATCH` writes `display_name`, `bio`, `show_email_publicly`; `email` and `avatar` are read-only |
 | `POST` `DELETE` | `/api/auth/user/avatar/` | multipart `avatar`; both answer with the whole account |

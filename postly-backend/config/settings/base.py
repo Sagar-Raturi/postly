@@ -282,6 +282,7 @@ REST_AUTH = {
     "TOKEN_MODEL": None,
     "SESSION_LOGIN": True,
     "USE_JWT": False,
+    "LOGIN_SERIALIZER": "accounts.serializers.LoginSerializer",
     "USER_DETAILS_SERIALIZER": "accounts.serializers.UserSerializer",
     "REGISTER_SERIALIZER": "accounts.serializers.SignupSerializer",
     # Django's PasswordResetForm signs links the confirm endpoint cannot
