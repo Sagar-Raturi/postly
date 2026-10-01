@@ -58,7 +58,7 @@ export function BlogTopBar({
               className="inline-flex size-5 items-center justify-center rounded-[6px] border border-current"
             >
               <span className="font-blog-heading text-[13px] leading-none font-semibold">
-                P
+                C
               </span>
             </span>
             <span

@@ -10,7 +10,7 @@ export function LogoMark({ className }: { className?: string }) {
       )}
     >
       <span className="font-display text-[1.15em] leading-none font-semibold">
-        P
+        C
       </span>
     </span>
   );

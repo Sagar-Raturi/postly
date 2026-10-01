@@ -58,7 +58,7 @@ class TestSignup:
             format="json",
         )
         assert refused.status_code == 400
-        assert "not verified" in str(refused.json()).lower()
+        assert refused.json()["code"] == "email_not_verified"
 
     def test_sends_a_verification_email_pointing_at_the_frontend(self, api, settings):
         api.post(SIGNUP_URL, SIGNUP, format="json")
@@ -358,6 +358,61 @@ class TestResendVerification:
     def test_an_unknown_address_looks_the_same_and_sends_nothing(self, api):
         response = api.post(RESEND_URL, {"email": "nobody@example.com"}, format="json")
         assert response.status_code == 200
+        assert mail.outbox == []
+
+
+class TestSigningInBeforeConfirming:
+    """
+    The way back for somebody whose confirmation email never arrived, went
+    to spam, expired, or carried a broken link. Signing in sends a new one.
+    """
+
+    def login(self, api, email, password):
+        return api.post(LOGIN_URL, {"email": email, "password": password}, format="json")
+
+    def test_the_right_password_sends_a_new_link(self, api, make_user, password):
+        make_user("late@example.com", verified=False)
+
+        response = self.login(api, "late@example.com", password)
+
+        assert response.status_code == 400
+        assert response.json()["code"] == "email_not_verified"
+        assert len(mail.outbox) == 1
+        assert mail.outbox[0].to == ["late@example.com"]
+
+    def test_the_new_link_confirms_the_address_and_lets_them_in(
+        self, api, make_user, password
+    ):
+        make_user("late@example.com", verified=False)
+        self.login(api, "late@example.com", password)
+
+        confirmed = api.get(f"/api/auth/verify-email/{verification_key()}/")
+        assert confirmed.status_code == 200
+        assert self.login(api, "late@example.com", password).status_code in (200, 204)
+
+    def test_it_is_not_still_signed_in_afterwards(self, api, make_user, password):
+        make_user("late@example.com", verified=False)
+        self.login(api, "late@example.com", password)
+        assert api.get(USER_URL).status_code == 401
+
+    def test_retrying_inside_the_cooldown_sends_nothing_more(
+        self, api, make_user, password
+    ):
+        """One email per address per three minutes, however often they try."""
+        make_user("late@example.com", verified=False)
+        self.login(api, "late@example.com", password)
+        again = self.login(api, "late@example.com", password)
+
+        assert again.json()["code"] == "email_not_verified"
+        assert len(mail.outbox) == 1
+
+    def test_a_wrong_password_says_nothing_and_sends_nothing(self, api, make_user):
+        make_user("late@example.com", verified=False)
+
+        response = self.login(api, "late@example.com", "not-the-password")
+
+        assert response.status_code == 400
+        assert "code" not in response.json()
         assert mail.outbox == []
 
 
