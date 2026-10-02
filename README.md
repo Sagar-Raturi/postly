@@ -70,26 +70,33 @@ rather than being sent.
 
 ## Testing subdomains locally
 
-Blogs are served at `/{siteSlug}` today and will move to
-`{siteSlug}.codomain.blog` in Phase 3. You do not need to touch `/etc/hosts` to
-work on that: **`lvh.me` and every subdomain of it resolve to `127.0.0.1`**, so
-<http://sagar.lvh.me:3000> reaches your dev server with `sagar.lvh.me` in the
-`Host` header — which is the only input the subdomain routing will need.
+Blogs are paths on the app (`/{siteSlug}`) until `NEXT_PUBLIC_BLOG_DOMAIN` is
+set, and then each one is served at `{siteSlug}.<that domain>`
+(`src/lib/hosts.ts`). You do not need to touch `/etc/hosts` to try it:
+browsers resolve every `*.localhost` name to your own machine, and the dev
+server already accepts them. Add this to `.env.local` and restart `npm run dev`:
 
-Add the host to the Django side before trying it, or the API refuses the
-request:
+```bash
+NEXT_PUBLIC_BLOG_DOMAIN=blog.localhost:3000
+```
+
+Then <http://sagar.blog.localhost:3000> is the `sagar` blog,
+<http://localhost:3000/sagar> redirects there, and
+<http://localhost:3000> is still the app. Take the line out again before
+committing anything that depends on paths.
+
+The subscribe form calls the API from the browser, so to try it on a
+subdomain the backend has to accept that origin:
 
 ```bash
 # postly-backend/.env
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,.lvh.me
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://sagar.lvh.me:3000
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://sagar.blog.localhost:3000
 ```
 
-Until the routing layer exists, `sagar.lvh.me:3000/sagar` is what serves the
-blog — the host is ignored and the path still carries the slug. Making the host
-carry it is a rewrite in `middleware.ts` mapping `{slug}.codomain.blog/x` onto
-`/{slug}/x`, and nothing under `src/app/[siteSlug]/` changes: every file there
-takes `siteSlug` as a parameter and hands it straight to `lib/public-api.ts`.
+The routing is a rewrite in `middleware.ts` mapping `{slug}.<domain>/x` onto
+`/{slug}/x`, so nothing under `src/app/[siteSlug]/` knows which kind of
+address it was reached on: every file there takes `siteSlug` as a parameter
+and hands it straight to `lib/public-api.ts`.
 
 ## Design system
 

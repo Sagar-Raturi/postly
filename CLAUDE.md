@@ -58,7 +58,7 @@ Dev email uses the console backend — verification/reset links print in the `ru
 - `subscribe-api.ts` — browser-side subscribe/confirm/unsubscribe. No credentials, never cached.
 - `blog-refresh.ts` (Server Action) + `request-blog-refresh.ts` — expire the writer's own blog cache after dashboard edits. Takes no arguments on purpose; the session decides which blog.
 - `blog-theme.ts` — the only place blog colours exist. `content.ts` — all homepage copy.
-- `operator.ts` — operator name, location, contact email and the legal pages' "last updated" date. `marketing-url.ts` — `marketingPath()` for links from a blog back to the marketing site.
+- `operator.ts` — operator name, location, contact email and the legal pages' "last updated" date. `marketing-url.ts` — `marketingPath()` for links from a blog back to the marketing site. `hosts.ts` — which host is the app and which are blogs (`NEXT_PUBLIC_BLOG_DOMAIN`), `blogPath()` / `blogUrl()`.
 
 ## Backend layout
 
@@ -79,7 +79,7 @@ Dev email uses the console backend — verification/reset links print in the `ru
 - **Blog appearance is enums + a hue int (0–360)**, never a raw colour/CSS string from users. Inside `/[siteSlug]` use only the blog theme tokens (`--background`, `--foreground`, `--muted`, `--muted-foreground`, `--border`, `--brand`/`--ring`) — other Tailwind colours like `text-destructive` fall back to the app palette and break contrast on dark blogs.
 - **Auth is httpOnly session cookies — never store a token in the browser.** `lib/api.ts` must keep `credentials: "include"` + CSRF header.
 - **CSRF on signed-out endpoints:** DRF only checks CSRF for signed-in sessions, so any new AllowAny view that changes state from the app (like login, signup, password reset) must put `EnforceCsrfMixin` (`accounts/csrf.py`) first in its bases, or it accepts cross-site POSTs. A wrong-password 400 in production proves nothing about CSRF; a foreign `Origin` must get a 403. The public subscribe endpoints are deliberately exempt (no session, double opt-in).
-- **A blog's address comes from `blog/addresses.py`** (`Site.domain` / `Site.url`, `url` in the writer API). Never spell out a domain or build a blog link from `FRONTEND_URL` / `/${slug}` yourself: when `BLOG_DOMAIN` is set, those copies point at the wrong place. Host/origin lists on Render go through `env_list()`, which trims spaces and trailing slashes.
+- **A blog's address comes from `blog/addresses.py`** (`Site.domain` / `Site.url`, `url` in the writer API). Never spell out a domain or build a blog link from `FRONTEND_URL` / `/${slug}` yourself: when `BLOG_DOMAIN` is set, those copies point at the wrong place. On the frontend, links between a blog's own pages use `blogPath(slug, "/post")` from `src/lib/hosts.ts`, never `` `/${slug}/…` ``: on a blog's own host the slug is not in the path. Two settings switch blogs to subdomains, `NEXT_PUBLIC_BLOG_DOMAIN` (Vercel) and `BLOG_DOMAIN` (Render); set the Vercel one first. Host/origin lists on Render go through `env_list()`, which trims spaces and trailing slashes.
 - **Trailing slashes:** Django needs them; `next.config.ts` sets `skipTrailingSlashRedirect` and proxies `/api/:path(.*)` to `POSTLY_API_ORIGIN` in deployed envs so cookies stay first-party. Don't "simplify" either.
 - **Email subscriptions:** double opt-in, the unsubscribe path, `List-Unsubscribe` headers and the reserved `subscription` slug are load-bearing (shared sending reputation). No bulk-import of subscribers, no writer-side delete of subscriber rows. Mail goes via a `PostEmail` outbox drained by cron — not Celery.
 - **TipTap:** keep `immediatelyRender: false`; fetch the post keyed on `postId`, not on the editor instance. Autosave PATCHes 2s after the last change.
@@ -96,7 +96,7 @@ The app domain `codomain.in` is bought and live (`www.codomain.in` is the main a
 | Postal address in subscriber email | `New Delhi, India` (a city, not a valid CAN-SPAM address) | `POSTLY_POSTAL_ADDRESS` in `config/settings/base.py` (env var on Render) and `OPERATOR_LOCATION` in `src/lib/operator.ts` | a full postal address, PO box or mail-forwarding address. The owner will provide it |
 | Operator | `Sagar Raturi`, an individual | `OPERATOR_NAME` in `src/lib/operator.ts` | a company name if one is registered; then also revisit the Terms' governing law (India / New Delhi courts) |
 | Sending address | `Codomain <hello@codomain.in>` default for `DEFAULT_FROM_EMAIL`; production still sends from `onboarding@resend.dev` | `config/settings/base.py`, env on Render | set on Render once `codomain.in` is verified in Resend (runbook 7.6) |
-| Blog domain | none — `BLOG_DOMAIN` unset, so blogs are paths on `FRONTEND_URL` | `BLOG_DOMAIN` in `config/settings/base.py` (env on Render); every address goes through `blog/addresses.py` | `codomain.blog`, set only after the host routing and wildcard certificate exist (runbook 7.8–7.9) |
+| Blog domain | `codomain.blog` is bought; both settings unset, so blogs are still paths on `www.codomain.in` | `NEXT_PUBLIC_BLOG_DOMAIN` (Vercel, `src/lib/hosts.ts`) and `BLOG_DOMAIN` (Render, `blog/addresses.py`) | `codomain.blog` on both, Vercel first, once the wildcard certificate is live (runbook 7.9) |
 
 The legal pages were drafted without a lawyer. Have them reviewed before real users arrive, and bump `LEGAL_UPDATED` in `src/lib/operator.ts` whenever they change.
 

@@ -440,24 +440,45 @@ address. Then update the placeholder table in `CLAUDE.md` and bump
 
 **Stage A done: Codomain is launchable.**
 
-### 7.8 Blogs on their own domain (code first)
+### 7.8 Blogs on their own domain (code)
 
-Before any DNS: middleware that rewrites `<slug>.yourblogs.com/...` to the
-existing `/[siteSlug]/...` routes, and every blog link built from
-`FRONTEND_URL` (`blog/emails.py`, `Site.domain`, the dashboard's "view blog")
-switched to the blog domain. Old `yourapp.com/<slug>` URLs redirect to the new
-ones. Set `NEXT_PUBLIC_MARKETING_URL=https://yourapp.com` so a blog's "Published
-with Codomain" credit points home.
+In the code since the `blog-subdomains` PR, and off until two settings are
+set. `src/lib/hosts.ts` and `src/middleware.ts` serve `<slug>.codomain.blog/x`
+as `/[siteSlug]/x`, send the bare blog domain to the homepage, and every link
+on a blog page goes through `blogPath()`. `app/[siteSlug]/layout.tsx`
+redirects old `www.codomain.in/<slug>/...` addresses (308, query string
+kept) to the blog's own host, so links already shared or emailed keep
+working. The backend's `blog/addresses.py` switches the addresses shown in
+the dashboard and mailed to readers.
+
+| Setting | Where | Value | Effect |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_BLOG_DOMAIN` | Vercel | `codomain.blog` | Subdomains serve blogs; old path addresses redirect. Baked in at build: redeploy after setting |
+| `BLOG_DOMAIN` | Render | `codomain.blog` | Dashboard, onboarding and subscriber email use `<slug>.codomain.blog` |
+
+**Order matters: DNS and certificate first (7.9), then Vercel, then
+Render.** Each step needs the one before it to be serving already, or
+something hands out addresses that do not open.
 
 ### 7.9 Wire the blog domain to Vercel
 
-1. Vercel → **Settings → Domains** → add `*.yourblogs.com` (and `yourblogs.com`,
-   redirecting to the app's homepage).
-2. Vercel switches the domain to its own nameservers and lists them. At the
-   registrar, set the blog domain's nameservers to those. A wildcard
-   certificate needs Vercel to answer DNS challenges; this is the simplest way.
-3. When the wildcard shows **Valid Configuration**, open two writers' blogs on
-   their subdomains in a private window.
+1. Vercel → **Settings → Domains → Add Existing** → `*.codomain.blog`,
+   connected to **Production**. Then add `codomain.blog` too, also
+   Production, with the "redirect to www" box **unticked**: the middleware
+   sends the bare domain to `www.codomain.in` itself.
+2. Vercel asks to use its nameservers for the wildcard and lists them
+   (`ns1.vercel-dns.com`, `ns2.vercel-dns.com`). At Hostinger, set
+   `codomain.blog`'s nameservers to those, DNSSEC off. A wildcard
+   certificate needs Vercel to answer DNS challenges; this is the simplest
+   way. Hostinger may refuse nameserver changes for ~24h after purchase.
+3. Wait for **Valid Configuration** on both, with certificates issued.
+4. Vercel → Environment Variables → `NEXT_PUBLIC_BLOG_DOMAIN=codomain.blog`
+   (Production) → **redeploy**. Check in a private window:
+   `https://<slug>.codomain.blog` shows the blog, clicking a post stays on
+   the subdomain, `https://www.codomain.in/<slug>` redirects to it,
+   `https://codomain.blog` goes to the homepage.
+5. Render → `BLOG_DOMAIN=codomain.blog` → deploy. The dashboard chip and
+   Settings now show `<slug>.codomain.blog`.
 
 The blog domain sends and receives no mail.
 

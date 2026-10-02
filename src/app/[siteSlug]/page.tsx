@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BlogShell } from "@/components/public/blog-shell";
 import { PostFeed } from "@/components/public/post-feed";
+import { blogPath } from "@/lib/hosts";
 import {
   getPublicSite,
   listPublicPosts,
@@ -93,7 +94,7 @@ export default async function BlogIndexPage({
             {year}
           </h1>
           <Link
-            href={`/${site.slug}`}
+            href={blogPath(site.slug)}
             className="rounded-sm text-[15px] text-brand transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
           >
             Show all posts

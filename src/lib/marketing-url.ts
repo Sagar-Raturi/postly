@@ -1,3 +1,5 @@
+import { BLOG_DOMAIN, SITE_URL } from "@/lib/hosts";
+
 /**
  * Where the "Published with Codomain" credits on a blog point.
  *
@@ -9,13 +11,14 @@
  * homepage because a blog is served from the same origin at
  * `www.codomain.in/{slug}`.
  *
- * Phase 3 note: when blogs move to `{slug}.codomain.blog`, a relative `/` stops
- * being right — it would land on the blog's own index instead of the
- * marketing site. That is the point at which this variable stops being
- * optional, which is why the link goes through here rather than being
- * written out at three call sites.
+ * Once blogs move to `{slug}.codomain.blog` (BLOG_DOMAIN set), a relative `/`
+ * stops being right — it would land on the blog's own index instead of the
+ * marketing site — so the default becomes the app's absolute SITE_URL. That
+ * switch is why the link goes through here rather than being written out at
+ * three call sites.
  */
-export const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL || "/";
+export const MARKETING_URL =
+  process.env.NEXT_PUBLIC_MARKETING_URL || (BLOG_DOMAIN ? SITE_URL : "/");
 
 /**
  * A page on the marketing site — `/privacy`, say — addressed so it still

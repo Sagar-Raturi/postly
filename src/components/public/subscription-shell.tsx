@@ -1,5 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
+import { blogPath } from "@/lib/hosts";
 import { PageContainer } from "@/components/public/page-container";
 
 /**
@@ -38,7 +39,7 @@ export function SubscriptionShell({
         {siteSlug ? (
           <p className="mt-10 border-t border-border/70 pt-6 text-[15px]">
             <Link
-              href={`/${siteSlug}`}
+              href={blogPath(siteSlug)}
               className="rounded-sm text-brand transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
             >
               {siteName ? `Back to ${siteName}` : "Back to the blog"}

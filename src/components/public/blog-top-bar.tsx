@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageContainer } from "@/components/public/page-container";
 import { marketingLinkProps } from "@/lib/marketing-url";
+import { blogPath } from "@/lib/hosts";
 
 /**
  * The full-width bar above the two columns: whose blog this is, and a
@@ -28,7 +29,7 @@ export function BlogTopBar({
         <div className="flex items-start justify-between gap-6 py-6 sm:py-8">
           <div className="min-w-0">
             <Link
-              href={`/${slug}`}
+              href={blogPath(slug)}
               className="rounded-sm font-blog-heading text-[22px] leading-[1.25] font-medium tracking-[-0.015em] text-foreground transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
             >
               {name}
