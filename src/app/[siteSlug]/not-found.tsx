@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageContainer } from "@/components/public/page-container";
+import { marketingPath } from "@/lib/marketing-url";
 
 /**
  * Shown for an unknown blog, an unknown post, and a draft's URL — the same
@@ -23,7 +24,7 @@ export default function BlogNotFound() {
       </p>
       <p className="mt-8 text-[15px] text-muted-foreground">
         <Link
-          href="/"
+          href={marketingPath("/")}
           className="rounded-sm font-medium text-foreground underline decoration-border underline-offset-[0.25em] transition-colors hover:text-brand hover:decoration-brand/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
         >
           Codomain

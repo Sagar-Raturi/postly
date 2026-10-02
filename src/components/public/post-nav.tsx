@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { blogPath } from "@/lib/hosts";
 import type { PublicPostSummary } from "@/lib/public-api";
 
 /**
@@ -56,7 +57,7 @@ function NavBlock({
 }) {
   return (
     <Link
-      href={`/${siteSlug}/${post.slug}`}
+      href={blogPath(siteSlug, `/${post.slug}`)}
       className={`group flex flex-col gap-2 rounded-sm py-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none ${
         align === "right" ? "sm:items-end sm:text-right" : ""
       }`}

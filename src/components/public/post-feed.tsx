@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { blogPath } from "@/lib/hosts";
 import {
   formatPublishedDate,
   formatReadTime,
@@ -46,7 +47,7 @@ export function PostFeed({
             >
               <h2 className="font-blog-heading text-[24px] leading-[1.25] tracking-[-0.015em] text-pretty sm:text-[30px]">
                 <Link
-                  href={`/${siteSlug}/${post.slug}`}
+                  href={blogPath(siteSlug, `/${post.slug}`)}
                   className="rounded-sm transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
                 >
                   {post.title}
@@ -71,7 +72,7 @@ export function PostFeed({
 
               <p className="mt-4">
                 <Link
-                  href={`/${siteSlug}/${post.slug}`}
+                  href={blogPath(siteSlug, `/${post.slug}`)}
                   className="inline-flex items-center gap-1.5 rounded-sm text-[15px] text-brand transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
                 >
                   Read more

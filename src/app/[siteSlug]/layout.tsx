@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { notFound, permanentRedirect } from "next/navigation";
 import { BlogTopBar } from "@/components/public/blog-top-bar";
 import { BLOG_THEME_ATTRIBUTE, blogThemeCss } from "@/lib/blog-theme";
+import {
+  BLOG_DOMAIN,
+  ORIGINAL_PATH_HEADER,
+  blogUrl,
+  classifyHost,
+} from "@/lib/hosts";
 import { getPublicSite, metaDescription } from "@/lib/public-api";
 
 /**
@@ -69,7 +76,7 @@ export async function generateMetadata({
     // Every page under here is by one person unless a post says otherwise.
     authors: [{ name: site.display_name }],
     // The blog is its own site, not a section of the marketing homepage.
-    alternates: { canonical: `/${site.slug}` },
+    alternates: { canonical: blogUrl(site.slug) },
     openGraph: {
       type: "website",
       siteName: site.name,
@@ -84,6 +91,7 @@ export default async function BlogLayout({
   params,
 }: LayoutProps<"/[siteSlug]">) {
   const { siteSlug } = await params;
+  await leaveTheAppDomain(siteSlug);
   const site = await getPublicSite(siteSlug);
 
   // No blog at this address. Reached whenever a slug does not match — which
@@ -118,4 +126,29 @@ export default async function BlogLayout({
       {children}
     </div>
   );
+}
+
+/**
+ * Sends an old path address on the app (`www.codomain.in/nina/a-post`) to
+ * the same page on the blog's own host (`nina.codomain.blog/a-post`), once
+ * blogs have one.
+ *
+ * Those addresses are in every link shared, bookmarked and emailed before
+ * the move, subscription confirm and unsubscribe links included, so they
+ * have to keep working. Permanent, so search engines move their index with
+ * it. The middleware supplies the full original path, query string
+ * included, because a layout is not told which child page it is rendering.
+ */
+async function leaveTheAppDomain(siteSlug: string) {
+  if (!BLOG_DOMAIN) return;
+
+  const requestHeaders = await headers();
+  if (classifyHost(requestHeaders.get("host")).kind !== "app") return;
+
+  const original = requestHeaders.get(ORIGINAL_PATH_HEADER) ?? `/${siteSlug}`;
+  const rest = original.slice(`/${siteSlug}`.length);
+  // `/nina?year=2025` keeps its query string on the blog's front page.
+  const path = rest.startsWith("/") ? rest : rest.startsWith("?") ? `/${rest}` : "";
+
+  permanentRedirect(`${blogUrl(siteSlug)}${path}`);
 }

@@ -4,6 +4,7 @@ import type { SubscribeSource } from "@/lib/subscribe-api";
 import type { ArchiveYear, PublicSite } from "@/lib/public-api";
 import { initials } from "@/lib/initials";
 import { marketingLinkProps } from "@/lib/marketing-url";
+import { blogPath } from "@/lib/hosts";
 
 /**
  * Who writes this blog, standing beside what they wrote.
@@ -121,7 +122,7 @@ export function ProfilePanel({
               return (
                 <li key={year}>
                   <Link
-                    href={active ? `/${site.slug}` : `/${site.slug}?year=${year}`}
+                    href={active ? blogPath(site.slug) : `${blogPath(site.slug)}?year=${year}`}
                     aria-current={active ? "page" : undefined}
                     className={`flex items-baseline justify-between gap-4 rounded-sm py-1 text-[15px] transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none ${
                       active

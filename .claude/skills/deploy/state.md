@@ -53,7 +53,7 @@ only ever talks to the Vercel origin. CORS is no longer load-bearing;
 - [x] **LIVE** — 2026-09-28, on the Vercel and Render URLs
 
 ## Phase 7 — Your own domain
-Two domains: app domain (DNS on Cloudflare) + blog domain (`*.` wildcard, Vercel nameservers). Registrar: Hostinger/GoDaddy India, paid in INR over UPI — Cloudflare Registrar and USD cards were a problem. App domain: `codomain.in`, bought at Hostinger 2026-09-29, 1-year term (renews ₹899/yr). Blog domain: `codomain.blog` preferred, `codomainblogs.in` fallback — not yet bought, not needed until 7.9.
+Two domains: app domain (DNS on Cloudflare) + blog domain (`*.` wildcard, Vercel nameservers). Registrar: Hostinger/GoDaddy India, paid in INR over UPI — Cloudflare Registrar and USD cards were a problem. App domain: `codomain.in`, bought at Hostinger 2026-09-29, 1-year term (renews ₹899/yr). Blog domain: `codomain.blog`, bought at Hostinger 2026-10-02.
 Stage A — app on its own domain, mail working (blogs stay at `/<slug>`):
 - [ ] 7.1 Buy both domains; auto-renew, lock, privacy, 2FA on — `codomain.in` bought; blog domain still to buy
 - [x] 7.2 App domain's nameservers → Cloudflare (free) — registry and public resolvers show Cloudflare NS; Cloudflare dashboard "Active" not yet confirmed
@@ -65,12 +65,13 @@ Stage A — app on its own domain, mail working (blogs stay at `/<slug>`):
 - [ ] 7.6 Resend: verify app domain + `mail.` subdomain, DMARC, webhook  ← current
   - `codomain.in` **Verified** in Resend 2026-10-01 (region Tokyo/ap-northeast-1; Receiving off). Records: TXT `resend._domainkey`, CNAME `rsend` → `rsend-apne1.forge.rmta.net`, CNAME `send` → `send.forge.rmta.net` (Resend now uses CNAMEs, not MX+TXT on `send`). Still to do: `mail.codomain.in`, webhook
   - 2026-10-01: `DEFAULT_FROM_EMAIL=Codomain <hello@codomain.in>` added on Render. Signup still 503'd: Render log shows `django.core.mail.backends.smtp` → `TimeoutError` — **`RESEND_API_KEY` was never set on Render**, so it fell back to SMTP (blocked on free tier). Fix: create a sending key scoped to codomain.in, add `RESEND_API_KEY`; then `EMAIL_HOST`/`EMAIL_PORT`/`EMAIL_USE_TLS` can go
+  - **Account mail works end to end, 2026-10-01**: `RESEND_API_KEY` set, `FRONTEND_URL=https://www.codomain.in` (was a comma list, which broke every emailed link), signup + confirm + login verified with a non-Resend Gmail. PR #8 lets unconfirmed accounts get a new link by logging in. Remaining in 7.6: `mail.codomain.in` + webhook
   - DMARC done early 2026-10-01: `_dmarc.codomain.in` = `v=DMARC1; p=none; rua=mailto:contact@codomain.in` (live). Forwarded test mail now handled (Not spam + Gmail filter)
 - [ ] 7.7 Switch Render/Vercel settings, redeploy both, smoke test with a non-Resend address
   - Origin half done 2026-09-30: user set `CSRF_TRUSTED_ORIGINS` (+ `https://www.codomain.in`) and `FRONTEND_URL=https://www.codomain.in` on Render. Logged-out requests can't prove CSRF (DRF skips it for anonymous users) — user to confirm by logging in on www.codomain.in, saving a post edit, and logging out. Mail settings wait for 7.5–7.6
 Stage B — blogs on `<slug>.<blog domain>`:
-- [ ] 7.8 Host-based routing + blog links (code)
-- [ ] 7.9 `*.<blog domain>` on Vercel nameservers, wildcard certificate issued
+- [ ] 7.8 Host-based routing + blog links (code) — written on branch `blog-subdomains`; off until `NEXT_PUBLIC_BLOG_DOMAIN` (Vercel) then `BLOG_DOMAIN` (Render) are set. Tick when merged
+- [ ] 7.9 `*.codomain.blog` + `codomain.blog` on Vercel, Hostinger NS → Vercel, wildcard certificate issued, then the two settings in that order
 - [ ] 7.10 HSTS preload: deliberately not submitted
 
 ## Phase 8 — Before real writers arrive

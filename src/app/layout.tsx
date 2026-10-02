@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
+import { SITE_URL } from "@/lib/hosts";
 import "./globals.css";
 
 /**
@@ -45,9 +46,7 @@ export const metadata: Metadata = {
   // it must be the domain Codomain actually serves from. It was once
   // postly.com — someone else's site — which told search engines that every
   // blog's canonical copy lived there.
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.codomain.in",
-  ),
+  metadataBase: new URL(SITE_URL),
   title: "Codomain — Publish your blog in minutes. Own it for good.",
   description:
     "Codomain gives every writer a fast, beautiful blog at their own address. Email subscribers, readable themes, no code, no ads — and your words stay yours.",

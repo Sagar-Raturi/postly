@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BlogShell } from "@/components/public/blog-shell";
 import { PostNav } from "@/components/public/post-nav";
 import { SubscribeForm } from "@/components/public/subscribe-form";
+import { blogUrl } from "@/lib/hosts";
 import {
   adjacentPosts,
   formatPublishedDate,
@@ -56,7 +57,7 @@ export async function generateMetadata({
     title: post.title,
     description,
     authors: [{ name: author }],
-    alternates: { canonical: `/${siteSlug}/${post.slug}` },
+    alternates: { canonical: blogUrl(siteSlug, `/${post.slug}`) },
     openGraph: {
       type: "article",
       siteName: site.name,
