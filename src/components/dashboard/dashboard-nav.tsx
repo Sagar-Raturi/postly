@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/site/theme-toggle";
+import { Logo, LogoMark } from "@/components/site/logo";
 import { AccountMenu } from "@/components/dashboard/account-menu";
 import { initials } from "@/lib/initials";
 import { cn } from "@/lib/utils";
@@ -168,6 +169,17 @@ export function DashboardNav() {
     <>
       {/* --- The column, from lg up ------------------------------------ */}
       <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-border/70 bg-muted/40 lg:flex">
+        {/*
+          The way back to the homepage. Every other page of the app has the
+          logo on top and links it home; the dashboard was the one screen
+          you could only leave by typing an address.
+        */}
+        <div className="px-4 pt-4">
+          <HomeLink>
+            <Logo wordmarkClassName="text-[1.1rem]" />
+          </HomeLink>
+        </div>
+
         <div className="p-3">
           <SiteBlock site={site} />
         </div>
@@ -202,6 +214,9 @@ export function DashboardNav() {
       {/* --- The bar, below lg ----------------------------------------- */}
       <div className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md lg:hidden">
         <div className="flex h-14 items-center gap-2 px-4">
+          <HomeLink>
+            <LogoMark />
+          </HomeLink>
           <div className="min-w-0 flex-1">
             <SiteBlock site={site} />
           </div>
@@ -336,6 +351,19 @@ function NavPill({ item, active }: { item: NavItem; active: boolean }) {
       )}
     >
       {content}
+    </Link>
+  );
+}
+
+/** The Codomain logo, linking to the homepage. */
+function HomeLink({ children }: { children: React.ReactNode }) {
+  return (
+    <Link
+      href="/"
+      className="inline-flex shrink-0 rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
+      {children}
+      <span className="sr-only">Codomain home</span>
     </Link>
   );
 }

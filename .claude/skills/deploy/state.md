@@ -70,8 +70,9 @@ Stage A — app on its own domain, mail working (blogs stay at `/<slug>`):
 - [ ] 7.7 Switch Render/Vercel settings, redeploy both, smoke test with a non-Resend address
   - Origin half done 2026-09-30: user set `CSRF_TRUSTED_ORIGINS` (+ `https://www.codomain.in`) and `FRONTEND_URL=https://www.codomain.in` on Render. Logged-out requests can't prove CSRF (DRF skips it for anonymous users) — user to confirm by logging in on www.codomain.in, saving a post edit, and logging out. Mail settings wait for 7.5–7.6
 Stage B — blogs on `<slug>.<blog domain>`:
-- [ ] 7.8 Host-based routing + blog links (code) — written on branch `blog-subdomains`; off until `NEXT_PUBLIC_BLOG_DOMAIN` (Vercel) then `BLOG_DOMAIN` (Render) are set. Tick when merged
-- [ ] 7.9 `*.codomain.blog` + `codomain.blog` on Vercel, Hostinger NS → Vercel, wildcard certificate issued, then the two settings in that order
+- [x] 7.8 Host-based routing + blog links (code) — merged (PR `blog-subdomains`), switched on 2026-10-02
+- [x] 7.9 `*.codomain.blog` + `codomain.blog` on Vercel, Hostinger NS → Vercel, wildcard certificate issued, then the two settings in that order
+  - 2026-10-02: Hostinger NS → `ns1/ns2.vercel-dns.com` (no 24h block this time). `*.codomain.blog` added late (first only apex + www were added); wildcard Let's Encrypt cert verified on `sagar`/`producttech`/random subdomains. `codomain.blog` still 308s to `www.codomain.blog` in Vercel — tidy later. `NEXT_PUBLIC_BLOG_DOMAIN=codomain.blog` set on Vercel + redeployed; verified: `producttech.codomain.blog` serves the blog with canonical on the subdomain, post links stay on it, `www.codomain.in/producttech/...` 308s there with query kept, `codomain.blog` and `www.codomain.blog` 308 to `www.codomain.in` (apex now Production, www removed), `/api` works on the blog host, app login/API unaffected. `BLOG_DOMAIN=codomain.blog` set on Render 2026-10-03 (backend up after deploy). User confirmed 2026-10-03: dashboard shows `small-hours.codomain.blog`. **Stage B done**
 - [ ] 7.10 HSTS preload: deliberately not submitted
 
 ## Phase 8 — Before real writers arrive

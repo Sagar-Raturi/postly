@@ -27,17 +27,33 @@ import { initials } from "@/lib/initials";
 export function AccountMenu() {
   const { user, logout } = useAuth();
   const [signingOut, setSigningOut] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
 
   if (!user) return null;
 
   async function handleLogout() {
     if (signingOut) return;
     setSigningOut(true);
-    await logout();
+    setFailed(false);
+    try {
+      await logout();
+      // Success leaves the page, so there is nothing to reset here.
+    } catch {
+      // Still signed in, on the server and so here. Say so, and let them
+      // try again rather than pretending.
+      setFailed(true);
+      setSigningOut(false);
+    }
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      // The failure note lives in the menu, so it is gone the next time the
+      // menu opens and the attempt is fresh.
+      onOpenChange={(open) => {
+        if (open) setFailed(false);
+      }}
+    >
       <DropdownMenuTrigger
         render={
           <Button
@@ -83,10 +99,22 @@ export function AccountMenu() {
           to do with the account. They are in the dashboard nav now, so
           this menu is back to being about who is signed in.
         */}
-        <DropdownMenuItem onClick={handleLogout} disabled={signingOut}>
+        <DropdownMenuItem
+          // Kept open while it works, so "Signing out…" and a failure are
+          // seen rather than happening behind a closed menu.
+          closeOnClick={false}
+          onClick={handleLogout}
+          disabled={signingOut}
+        >
           <LogOut aria-hidden />
-          {signingOut ? "Signing out…" : "Log out"}
+          {signingOut ? "Signing out…" : failed ? "Try again" : "Log out"}
         </DropdownMenuItem>
+        {failed ? (
+          <p role="alert" className="px-2 pt-1 pb-2 text-[0.75rem] leading-snug text-destructive">
+            Couldn&apos;t reach the server to sign you out. You&apos;re still
+            signed in.
+          </p>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

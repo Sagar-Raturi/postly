@@ -3,6 +3,7 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ApiError,
   ensureCsrf,
   getCurrentUser,
   login as apiLogin,
@@ -33,6 +34,28 @@ type AuthContextValue = {
 };
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
+
+/** Tries, with a pause between, before a logout is reported as failed. */
+const LOGOUT_ATTEMPTS = 3;
+
+async function endServerSession(): Promise<void> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= LOGOUT_ATTEMPTS; attempt++) {
+    try {
+      await apiLogout();
+      return;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) return;
+      lastError = err;
+      if (attempt < LOGOUT_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
+      }
+    }
+  }
+
+  throw lastError;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -88,15 +111,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return account;
   }, []);
 
+  /**
+   * Ends the session on the server, then goes to /login.
+   *
+   * It used to clear the user locally whatever the server said, and that
+   * half-logout is worse than either outcome. In production a logout that
+   * failed (the API restarting after a deploy, or waking from sleep on
+   * Render's free plan) left the session alive and the `postly_auth` hint
+   * set: the middleware bounced /login straight back to /dashboard, which
+   * still loaded the writer's posts, now with no account menu to try again
+   * from. On a shared computer that is somebody who believes they signed
+   * out and did not.
+   *
+   * So the request is retried, a 401 counts as success (there was no
+   * session left to end), and anything else is thrown for the account
+   * menu to report while the person is, truthfully, still signed in. Only
+   * once the server has agreed does it move to /login, by which point the
+   * logout response has cleared the hint cookie the middleware reads.
+   */
   const logout = React.useCallback(async () => {
-    try {
-      await apiLogout();
-    } finally {
-      // Even a failed logout should end the session locally — leaving the
-      // UI signed in after someone clicked "log out" is the worse failure.
-      setUser(null);
-      router.replace("/login");
-    }
+    await endServerSession();
+    setUser(null);
+    router.replace("/login");
   }, [router]);
 
   const signup = React.useCallback(async (data: SignupInput) => {
