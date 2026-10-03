@@ -70,9 +70,13 @@ export function SubscribeForm({
 
     setSubmitting(true);
     setError(null);
+    setDone(null);
 
     try {
       setDone(await subscribe(siteSlug, email.trim(), source, honeypot));
+      // Cleared so the field is ready for another address, which is also
+      // the visible sign that this one was taken.
+      setEmail("");
     } catch (err) {
       setError(
         err instanceof SubscribeError
@@ -84,24 +88,10 @@ export function SubscribeForm({
     }
   }
 
-  if (done) {
-    return (
-      <section className={`border-t border-border/70 pt-8 ${className}`}>
-        {/*
-          Polite, not assertive: the reader has just pressed a button and
-          is looking at the place the answer appears, so interrupting them
-          buys nothing. `role="status"` carries an implicit aria-live.
-        */}
-        <p role="status" className="text-[16px] leading-[1.65] text-foreground">
-          {done}
-        </p>
-        <p className="mt-2 text-[13px] leading-[1.6] text-muted-foreground">
-          Nothing after a minute or two? Check your spam folder.
-        </p>
-      </section>
-    );
-  }
-
+  // The form stays after a successful subscribe, with the answer under it.
+  // It used to be replaced by the answer, which left a reader who wanted to
+  // add a second address (or fix a typo in the first) with a blog that had
+  // no subscribe box until they reloaded the page.
   return (
     <section className={`border-t border-border/70 pt-8 ${className}`}>
       <h2
@@ -138,7 +128,12 @@ export function SubscribeForm({
             required
             placeholder="you@example.com"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              // A new address starts a new attempt; the last answer was
+              // about a different one.
+              if (done) setDone(null);
+            }}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${id}-error` : undefined}
             // `flex-1` only once the row is horizontal. Stacked, the flex
@@ -211,6 +206,23 @@ export function SubscribeForm({
             {error}
           </p>
         ) : null}
+
+        {/*
+          Polite, not assertive: the reader has just pressed a button and
+          is looking at the place the answer appears, so interrupting them
+          buys nothing. `role="status"` carries an implicit aria-live, and
+          stays mounted so the announcement fires when the text arrives.
+        */}
+        <div role="status">
+          {done ? (
+            <div className="mt-3">
+              <p className="text-[15px] leading-[1.6] text-foreground">{done}</p>
+              <p className="mt-1 text-[13px] leading-[1.6] text-muted-foreground">
+                Nothing after a minute or two? Check your spam folder.
+              </p>
+            </div>
+          ) : null}
+        </div>
 
         <p className="mt-3 text-[13px] leading-[1.6] text-muted-foreground">
           Unsubscribe from any email in one click.{" "}
